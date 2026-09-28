@@ -103,7 +103,7 @@ function matrix(): Case[] {
                                     watchdogNudge,
                                     absoluteCommand,
                                     nextTurnOocBrief,
-                                },
+                                } as FinalUserModuleInput,
                             });
                         }
                     }
@@ -148,7 +148,7 @@ describe('WO-P2-02 — precedence rules survive as declared suppression', () => 
         settings: thinkingOff,
         userMessage: 'I wait.',
         volatileBlock: '',
-    };
+    } as unknown as FinalUserModuleInput;
 
     it('an Absolute Command removes GM_REMINDER and the watchdog nudge', () => {
         const assembled = assembleContributions(createFinalUserRegistry().collect({

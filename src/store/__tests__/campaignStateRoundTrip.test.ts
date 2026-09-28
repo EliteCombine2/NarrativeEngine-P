@@ -82,7 +82,7 @@ describe('loadCampaignState', () => {
         const reloaded = await loadCampaignState('c1');
 
         expect(persisted).not.toBeNull();
-        expect((persisted as { pinnedExcerpts?: unknown }).pinnedExcerpts).toEqual(PINS);
+        expect((persisted as unknown as { pinnedExcerpts?: unknown }).pinnedExcerpts).toEqual(PINS);
         expect(reloaded?.pinnedExcerpts).toEqual(PINS);
     });
 });
