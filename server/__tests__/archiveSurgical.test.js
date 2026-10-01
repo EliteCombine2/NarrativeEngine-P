@@ -96,7 +96,7 @@ afterEach(() => {
 
 const ID = 'camp-test';
 
-function seedArchive() {
+function seedArchive({ eol = '\n' } = {}) {
     const md = [
         '## SCENE 001',
         `*${new Date(2025, 0, 1).toISOString()}*`,
@@ -120,7 +120,7 @@ function seedArchive() {
         '',
         '---',
         '',
-    ].join('\n');
+    ].join(eol);
     fs.writeFileSync(path.join(CAMPAIGNS_DIR, `${ID}.archive.md`), md);
 
     const index = [
@@ -221,6 +221,43 @@ describe('WO-F: edit-sync (updateSceneAssistant)', () => {
 
         // re-embed ran
         expect(storeMock).toHaveBeenCalled();
+    });
+
+    it('keeps the player text when the scene has CRLF line endings', async () => {
+        seedArchive({ eol: '\r\n' });
+
+        const res = await request
+            .patch(`/api/campaigns/${ID}/archive/scenes/002/assistant`)
+            .send({ assistantContent: 'The barkeep pours a dark stout and winks.' });
+
+        expect(res.status).toBe(200);
+        expect(res.body.userContent).toBe('I order ale.');
+
+        const md = fs.readFileSync(path.join(CAMPAIGNS_DIR, `${ID}.archive.md`), 'utf-8');
+        // the edited scene is rewritten in LF with the player's text intact
+        expect(md).toContain('**[USER]**\nI order ale.\n\n**[GM]**\nThe barkeep pours a dark stout and winks.');
+        expect(md).not.toContain('The barkeep pours ale.');
+        // the other scene is left byte-for-byte as it was
+        expect(md).toContain('**[USER]**\r\nI enter the tavern.\r\n\r\n**[GM]**\r\nThe barkeep greets you.');
+
+        const idx = JSON.parse(fs.readFileSync(path.join(CAMPAIGNS_DIR, `${ID}.archive.index.json`), 'utf-8'));
+        expect(idx.find(e => e.sceneId === '002').userSnippet).toBe('I order ale.');
+    });
+
+    it('refuses to rewrite a scene whose player text it cannot read', async () => {
+        seedArchive();
+        const mdPath = path.join(CAMPAIGNS_DIR, `${ID}.archive.md`);
+        // No blank line between the player text and [GM]: the [USER] pattern can't match.
+        const malformed = fs.readFileSync(mdPath, 'utf-8').replace('I order ale.\n\n**[GM]**', 'I order ale.\n**[GM]**');
+        fs.writeFileSync(mdPath, malformed);
+
+        const res = await request
+            .patch(`/api/campaigns/${ID}/archive/scenes/002/assistant`)
+            .send({ assistantContent: 'The barkeep pours a dark stout and winks.' });
+
+        expect(res.status).toBe(422);
+        expect(fs.readFileSync(mdPath, 'utf-8')).toBe(malformed);
+        expect(storeMock).not.toHaveBeenCalled();
     });
 
     it('rejects empty assistantContent', async () => {

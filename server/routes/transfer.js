@@ -24,7 +24,9 @@ function parseArchiveMd(content, indexEntries = []) {
     for (const e of indexEntries) byId[e.sceneId] = e;
 
     const blocks = content.split(/^(?=## SCENE )/m).filter(b => b.trim());
-    return blocks.map(block => {
+    // Parse LF copies: the patterns below only match `\n`, so a CRLF scene used to
+    // export with empty player and GM text.
+    return blocks.map(b => b.replace(/\r\n/g, '\n')).map(block => {
         const idMatch = block.match(/^## SCENE (\d+)/);
         if (!idMatch) return null;
         const sceneId = idMatch[1].padStart(3, '0');

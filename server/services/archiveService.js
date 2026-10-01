@@ -300,7 +300,7 @@ export function fetchScenesByIds(campaignId, idsParam) {
         if (!match) continue;
         const sceneId = match[1].padStart(3, '0');
         if (ids.includes(sceneId)) {
-            result.push({ sceneId, content: block.trim() });
+            result.push({ sceneId, content: block.replace(/\r\n/g, '\n').trim() });
         }
     }
     return result;
@@ -722,9 +722,18 @@ export async function updateSceneAssistant(campaignId, sceneIdParam, assistantCo
             if (!match) return block;
             if (parseInt(match[1], 10) !== targetNum) return block;
             found = true;
-            const userMatch = block.match(/\*\*\[USER\]\*\*\n([\s\S]*?)\n\n\*\*\[GM\]\*\*/);
+            // Parse a LF copy: archives written on Windows or edited by hand can carry
+            // CRLF, and these patterns only match `\n`. A missed [USER] match used to
+            // rewrite the scene with the player's text gone.
+            const text = block.replace(/\r\n/g, '\n');
+            const userMatch = text.match(/\*\*\[USER\]\*\*\n([\s\S]*?)\n\n\*\*\[GM\]\*\*/);
+            if (!userMatch && text.includes('**[USER]**')) {
+                const err = new Error(`Scene ${targetId}: could not read the player's text; refusing to rewrite the scene`);
+                err.statusCode = 422;
+                throw err;
+            }
             userContent = (userMatch ? userMatch[1] : '').trim();
-            const lines = block.split('\n');
+            const lines = text.split('\n');
             const headerLines = [];
             let i = 0;
             while (i < lines.length && headerLines.length < 2) {
