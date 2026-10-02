@@ -2,7 +2,7 @@ import type { ChatMessage, EndpointConfig, ProviderConfig } from '../../types';
 import type { TurnState, TurnCallbacks } from './turnOrchestrator';
 import { useAppStore } from '../../store/useAppStore';
 import { api } from '../llm/apiClient';
-import { rateImportance } from '../archive-memory/importanceRater';
+import { rateImportance, ratingToIndexImportance } from '../archive-memory/importanceRater';
 import { sealChapterCombined, type SealModelCall } from '../saveFileEngine';
 import { toast } from '../../components/Toast';
 import { mergeLifecycleEntries } from '../campaign-state/divergenceRegister';
@@ -203,8 +203,9 @@ async function runArchiveTrack(
         const importanceAvailable = facade ? hasHostModelRole(facade, 'story') : Boolean(importanceProvider);
         if (importanceAvailable && tierAllows(facade?.config.aiTier ?? state.settings.aiTier, 'importanceRating')) {
             try {
-                sceneImportance = await rateImportance(importanceProvider, displayInput, lastAssistantContent, allMsgs, facade ? (request: import('./hostFacade').ModelRequest) => facade.model.call('story', request) : undefined);
-                console.log(`[ImportanceRater] Scene rated: ${sceneImportance}/5`);
+                const rating = await rateImportance(importanceProvider, displayInput, lastAssistantContent, allMsgs, facade ? (request: import('./hostFacade').ModelRequest) => facade.model.call('story', request) : undefined);
+                sceneImportance = ratingToIndexImportance(rating);
+                console.log(`[ImportanceRater] Scene rated: ${rating}/5 (stored as ${sceneImportance}/10)`);
             } catch (err) {
                 console.warn('[ImportanceRater] Failed (non-fatal):', err);
             }

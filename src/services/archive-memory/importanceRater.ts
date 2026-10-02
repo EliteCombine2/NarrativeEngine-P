@@ -54,6 +54,18 @@ export async function rateImportance(
     return heuristicImportance(`${userText}\n${gmText}`);
 }
 
+/**
+ * The archive index stores importance on the server heuristic's 1–10 scale
+ * (`server/lib/nlp.js` estimateImportance), and its readers threshold on that
+ * scale: NPC knowledge limits at >= 6, the LOD importance bonus at >= 8. The rater
+ * answers 1–5, so it is mapped 2r − 1 (1, 3, 5, 7, 9) before it is stored:
+ * Significant (4) and Critical (5) clear the knowledge-limit bar, Critical alone
+ * the LOD bonus. Stored unmapped, a Max-tier scene could never reach either.
+ */
+export function ratingToIndexImportance(rating: number): number {
+    return Math.min(10, Math.max(1, 2 * Math.round(rating) - 1));
+}
+
 export function heuristicImportance(text: string): number {
     const lower = text.toLowerCase();
     let score = 3;
