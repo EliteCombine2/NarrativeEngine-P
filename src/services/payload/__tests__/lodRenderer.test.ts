@@ -6,7 +6,7 @@ import type { ArchiveChapter, ArchiveIndexEntry, ChatMessage } from '../../../ty
 // ─────────────────────────────────────────────────────────────────────────────
 // WO-08 — tests for the pure LOD chapter renderer.
 // Covers: tier split, importance-bonus promotion, no witness filter, synopsis
-// fallback chain, demotion cascade, determinism, dedup rule.
+// fallback chain, demotion cascade, determinism, straddling chapters.
 // ─────────────────────────────────────────────────────────────────────────────
 
 function mkChapter(over: Partial<ArchiveChapter> & { chapterId: string }): ArchiveChapter {
@@ -382,15 +382,15 @@ describe('WO-08 — renderLodChapters', () => {
         expect(r2.tierByChapterId).toEqual(r1.tierByChapterId);
     });
 
-    it('dedup rule: a chapter straddling the condensed boundary is excluded', () => {
-        // CH01 covers scenes 001–006, but the boundary is at scene 003 — only
-        // scenes 001–003 are condensed. CH01 straddles the boundary → excluded.
+    it('a sealed chapter straddling the condensed boundary renders, so its condensed scenes are covered', () => {
+        // CH01 covers scenes 001–006; only 001–003 are condensed, 004–006 are verbatim.
+        // Excluding it would leave 001–003 in neither the verbatim window nor a summary.
         const sealed: ArchiveChapter[] = [
             mkChapter({ chapterId: 'CH01', sceneRange: ['001', '006'], sceneIds: ['001', '002', '003', '004', '005', '006'] }),
         ];
         const msgs: ChatMessage[] = [];
-        for (let i = 1; i <= 3; i++) msgs.push(mkMessage(String(i).padStart(3, '0')));
-        // Boundary at index 2 — max stamped scene is 003.
+        for (let i = 1; i <= 6; i++) msgs.push(mkMessage(String(i).padStart(3, '0')));
+        // Boundary at index 2 — max stamped condensed scene is 003.
         const archiveIndex = broadcastIndex(['001', '002', '003', '004', '005', '006']);
         const result = renderLodChapters({
             chapters: sealed,
@@ -400,9 +400,52 @@ describe('WO-08 — renderLodChapters', () => {
             budgetTokens: 100000,
             config: DEFAULT_CONFIG,
         });
-        // chapterEnd (006) > maxStampedScene (003) → not wholly behind → excluded.
-        expect(result.tierByChapterId['CH01']).toBeUndefined();
-        expect(result.text).toBe('');
+        expect(result.tierByChapterId['CH01']).toBe('summary');
+        expect(result.text).toContain('Chapter CH01 — Chapter CH01');
+    });
+
+    it('a sealed chapter still wholly in the verbatim window is not rendered', () => {
+        const sealed: ArchiveChapter[] = [
+            mkChapter({ chapterId: 'CH01', sceneRange: ['001', '003'], sceneIds: ['001', '002', '003'] }),
+            mkChapter({ chapterId: 'CH02', sceneRange: ['004', '006'], sceneIds: ['004', '005', '006'] }),
+        ];
+        const msgs: ChatMessage[] = [];
+        for (let i = 1; i <= 6; i++) msgs.push(mkMessage(String(i).padStart(3, '0')));
+        const archiveIndex = broadcastIndex(['001', '002', '003', '004', '005', '006']);
+        const result = renderLodChapters({
+            chapters: sealed,
+            archiveIndex,
+            condensedUpToIndex: 2, // scenes 001–003 condensed, 004–006 verbatim
+            messages: msgs,
+            budgetTokens: 100000,
+            config: DEFAULT_CONFIG,
+        });
+        expect(result.tierByChapterId['CH01']).toBe('summary');
+        expect(result.tierByChapterId['CH02']).toBeUndefined();
+    });
+
+    it('without sceneId stamps on condensed messages, the first verbatim scene bounds eligibility', () => {
+        const sealed: ArchiveChapter[] = [
+            mkChapter({ chapterId: 'CH01', sceneRange: ['001', '006'], sceneIds: ['001', '002', '003', '004', '005', '006'] }),
+            mkChapter({ chapterId: 'CH02', sceneRange: ['007', '009'], sceneIds: ['007', '008', '009'] }),
+        ];
+        const msgs: ChatMessage[] = [
+            { id: 'u1', role: 'user', content: 'old', timestamp: 0 } as ChatMessage,
+            { id: 'u2', role: 'user', content: 'old', timestamp: 0 } as ChatMessage,
+            mkMessage('005'),
+            mkMessage('006'),
+        ];
+        const archiveIndex = broadcastIndex(['001', '002', '003', '004', '005', '006', '007', '008', '009']);
+        const result = renderLodChapters({
+            chapters: sealed,
+            archiveIndex,
+            condensedUpToIndex: 1,
+            messages: msgs,
+            budgetTokens: 100000,
+            config: DEFAULT_CONFIG,
+        });
+        expect(result.tierByChapterId['CH01']).toBe('summary');
+        expect(result.tierByChapterId['CH02']).toBeUndefined();
     });
 
     it('open (unsealed) chapter is never rendered', () => {
@@ -427,7 +470,7 @@ describe('WO-08 — renderLodChapters', () => {
         expect(result.tierByChapterId['CH02']).toBeUndefined();
     });
 
-    it('nothing condensed: no chapters are eligible (conservative "wholly behind" check)', () => {
+    it('nothing condensed: no chapters are eligible', () => {
         const sealed: ArchiveChapter[] = [
             mkChapter({ chapterId: 'CH01', sceneRange: ['001', '003'], sceneIds: ['001', '002', '003'] }),
         ];
