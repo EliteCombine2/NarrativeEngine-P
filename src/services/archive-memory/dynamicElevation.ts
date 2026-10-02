@@ -48,17 +48,15 @@ const ELEVATION_TIMEOUT_MS = 5000;
 export function computeSynopsisScope(params: {
     chapters: ArchiveChapter[];
     archiveIndex: ArchiveIndexEntry[];
-    onStageNpcIds: string[];
     condensedUpToIndex: number;
     messages: ChatMessage[];
     config: LodConfig;
 }): { scopeSceneIds: string[]; sceneIdToChapterId: Map<string, string> } {
-    const { chapters, archiveIndex, onStageNpcIds, condensedUpToIndex, messages, config } = params;
+    const { chapters, archiveIndex, condensedUpToIndex, messages, config } = params;
 
     const lodResult = renderLodChapters({
         chapters,
         archiveIndex,
-        onStageNpcIds,
         condensedUpToIndex,
         messages,
         budgetTokens: Number.MAX_SAFE_INTEGER,
@@ -197,7 +195,6 @@ export async function gatherDynamicElevation(
     if (!tierAllows(config?.aiTier ?? state.settings.aiTier, 'lodDynamicElevation')) return empty;
 
     const archiveIndex = data?.archiveIndex ?? state.archiveIndex;
-    const onStageNpcIds = data?.onStageNpcIds ?? state.onStageNpcIds ?? [];
     const condenser = data?.condenser ?? state.condenser;
     const messages = data?.messages ?? state.messages;
     const input = data?.input ?? state.input;
@@ -208,7 +205,6 @@ export async function gatherDynamicElevation(
     const { scopeSceneIds, sceneIdToChapterId } = computeSynopsisScope({
         chapters,
         archiveIndex,
-        onStageNpcIds,
         condensedUpToIndex: condenser.condensedUpToIndex,
         messages,
         config: {

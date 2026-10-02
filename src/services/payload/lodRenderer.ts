@@ -5,9 +5,10 @@
 // (D1: there is NO chapter-level full tier — the verbatim window IS the full tier,
 // owned by history.ts). Output is byte-identical for identical inputs so it can
 // live in the cached prompt prefix: no Date, no random, no Map-iteration-order
-// dependence. Witness filter mirrors world.ts (lines 182–198): broadcast scenes
-// (no witness data) are always included; witnessed scenes only if at least one
-// witness is in the active/on-stage NPC set.
+// dependence. No witness filter: chapter summaries are the narrator's recap, so
+// they never depend on who is on stage. (The filter this replaced compared
+// witness names against NPC ids, which kept only chapters holding a scene with no
+// witness data, and a cast-dependent block would also break the cached prefix.)
 //
 // Wiring (WO-09) and budget integration with the rest of the payload are out of
 // scope here — this module is pure and synchronous.
@@ -28,7 +29,6 @@ export interface LodConfig {
 export interface LodRenderInput {
     chapters: ArchiveChapter[];
     archiveIndex: ArchiveIndexEntry[];
-    onStageNpcIds: string[];
     /** Index into `messages` of the last condensed message; -1 means "nothing condensed yet". */
     condensedUpToIndex: number;
     messages: ChatMessage[];
@@ -118,34 +118,6 @@ function isChapterWhollyBehind(
 }
 
 /**
- * Witness filter — mirrors world.ts (lines 182–198).
- * A chapter is included if ANY of its scenes was witnessed by an active/on-stage
- * NPC, OR if the scene has no witness data (broadcast — always included).
- */
-function chapterIsWitnessed(
-    chapter: ArchiveChapter,
-    archiveIndex: ArchiveIndexEntry[],
-    onStageNpcIds: string[],
-): boolean {
-    if (onStageNpcIds.length === 0) {
-        // No on-stage cast: only broadcast scenes (no witnesses) pass. Mirrors
-        // world.ts — the active set is empty, so no witnessed scene qualifies.
-        return chapter.sceneIds.some(sid =>
-            archiveIndex.some(e => e.sceneId === sid && (!e.witnesses || e.witnesses.length === 0))
-        );
-    }
-    const onStageSet = new Set(onStageNpcIds);
-    for (const sid of chapter.sceneIds) {
-        const entry = archiveIndex.find(e => e.sceneId === sid);
-        if (!entry) continue;
-        const witnesses = entry.witnesses;
-        if (!witnesses || witnesses.length === 0) return true; // broadcast
-        if (witnesses.some(w => onStageSet.has(w))) return true;
-    }
-    return false;
-}
-
-/**
  * Effective age = position-from-end − importanceBonus (if any scene in the
  * chapter has importance ≥ 8 in the archive index). Lower effective age =
  * "newer" for the summary-tier selection. We use chapter.sceneRange[1] as the
@@ -198,20 +170,16 @@ function firstSentence(summary: string): string | null {
 
 /**
  * Pure synchronous LOD renderer. See file header for the rules and the
- * invariant contract (determinism, witness filter, dedup rule, budget cascade).
+ * invariant contract (determinism, dedup rule, budget cascade).
  */
 export function renderLodChapters(input: LodRenderInput): LodRenderResult {
     const config = input.config ?? DEFAULT_CONFIG;
-    const { chapters, archiveIndex, onStageNpcIds, condensedUpToIndex, messages, budgetTokens } = input;
+    const { chapters, archiveIndex, condensedUpToIndex, messages, budgetTokens } = input;
 
-    // 1. Eligibility: sealed chapters, wholly behind the condensed boundary,
-    //    and witnessed (or broadcast) per world.ts semantics.
+    // 1. Eligibility: sealed chapters wholly behind the condensed boundary.
     const sealed = chapters.filter(c => c.sealedAt !== undefined && !c.invalidated);
 
-    const eligible = sealed.filter(c =>
-        isChapterWhollyBehind(c, messages, condensedUpToIndex) &&
-        chapterIsWitnessed(c, archiveIndex, onStageNpcIds)
-    );
+    const eligible = sealed.filter(c => isChapterWhollyBehind(c, messages, condensedUpToIndex));
 
     // 2. Order oldest → newest by end-scene number (stable on ties by chapterId).
     const ordered = eligible.slice().sort((a, b) => {
