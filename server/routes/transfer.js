@@ -9,7 +9,7 @@ import { isCampaignMetaFile, getTransferableTables, serverTableRegistry } from '
 import { modTableSuffix, scanModTableFiles } from '../lib/modTableRegistry.js';
 import { RETIRED_CAMPAIGN_TABLES } from '../lib/legacyTables.js';
 import { readMigrationLedger, normalizeLedger, migrationLedgerPath } from '../lib/legacyAdoption.js';
-import { embedText, buildArchiveText, buildLoreText } from '../lib/embedder.js';
+import { embedText, embedBatch, buildScenePassages, buildLoreText } from '../lib/embedder.js';
 import { storeArchiveEmbedding, storeLoreEmbedding } from '../lib/vectorStore.js';
 import { wrapAsync } from '../lib/asyncHandler.js';
 import path from 'path';
@@ -317,12 +317,16 @@ export function createTransferRouter() {
         setImmediate(async () => {
             let embedOk = 0;
             let embedFail = 0;
-            for (const entry of bundle.archiveIndex || []) {
+            const indexById = new Map((bundle.archiveIndex || []).map(e => [e.sceneId, e]));
+            for (const scene of bundle.scenes || []) {
                 try {
-                    const vec = await embedText(buildArchiveText(entry));
-                    storeArchiveEmbedding(newId, entry.sceneId, vec);
+                    const entry = indexById.get(scene.sceneId);
+                    const names = [...(entry?.witnesses ?? []), ...(entry?.npcsMentioned ?? [])];
+                    const passages = buildScenePassages(scene.userContent, scene.assistantContent, names);
+                    const vectors = passages.length > 0 ? await embedBatch(passages, 16, 0) : [];
+                    storeArchiveEmbedding(newId, scene.sceneId, vectors);
                     embedOk++;
-                } catch (e) { console.warn('[Transfer] Archive embed failed:', entry.sceneId, e.message); embedFail++; }
+                } catch (e) { console.warn('[Transfer] Archive embed failed:', scene.sceneId, e.message); embedFail++; }
             }
             for (const chunk of bundle.lore || []) {
                 try {

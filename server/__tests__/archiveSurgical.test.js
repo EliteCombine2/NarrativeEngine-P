@@ -8,14 +8,15 @@ import path from 'path';
 // fixed-length Float32Array so the storeArchiveEmbedding path executes.
 vi.mock('../lib/embedder.js', () => ({
     embedText: vi.fn(async () => new Float32Array(32)),
-    buildArchiveText: vi.fn((entry) => `MOCK ${entry.sceneId}`),
+    embedQuery: vi.fn(async () => new Float32Array(32)),
+    buildScenePassages: vi.fn(() => ['MOCK passage']),
     buildLoreText: vi.fn(() => 'MOCK_LORE'),
     warmup: vi.fn(async () => {}),
     embedBatch: vi.fn(async () => []),
     getActiveDims: vi.fn(() => 32),
     getActiveModelId: vi.fn(() => 'mock'),
     isModelReady: vi.fn(() => true),
-    EMBEDDING_VERSION: 1,
+    EMBEDDING_VERSIONS: { scene: 2, lore: 1, rule: 1 },
 }));
 
 // Mock the vector store so DB init isn't required. The mock records calls so
@@ -28,7 +29,7 @@ vi.mock('../lib/vectorStore.js', () => ({
     searchArchive: vi.fn(async () => []),
     searchLore: vi.fn(async () => []),
     getEmbeddingStatus: vi.fn(() => ({ status: 'mock', loaded: true })),
-    EMBEDDING_VERSION: 1,
+    EMBEDDING_VERSIONS: { scene: 2, lore: 1, rule: 1 },
     getDb: vi.fn(() => null),
     deleteArchiveEmbedding: deleteMock,
 }));
@@ -47,13 +48,14 @@ beforeEach(async () => {
     // Re-mock after resetModules (vi.mock is hoisted but resetModules clears the registry).
     vi.doMock('../lib/embedder.js', () => ({
         embedText: vi.fn(async () => new Float32Array(32)),
-        buildArchiveText: vi.fn((entry) => `MOCK ${entry.sceneId}`),
+    embedQuery: vi.fn(async () => new Float32Array(32)),
+        buildScenePassages: vi.fn(() => ['MOCK passage']),
         buildLoreText: vi.fn(() => 'MOCK_LORE'),
         warmup: vi.fn(async () => {}),
         embedBatch: vi.fn(async () => []),
         getActiveDims: vi.fn(() => 32),
         getActiveModelId: vi.fn(() => 'mock'),
-        EMBEDDING_VERSION: 1,
+        EMBEDDING_VERSIONS: { scene: 2, lore: 1, rule: 1 },
     }));
     vi.doMock('../lib/vectorStore.js', () => ({
         storeArchiveEmbedding: storeMock,
@@ -61,7 +63,7 @@ beforeEach(async () => {
         searchArchive: vi.fn(async () => []),
         searchLore: vi.fn(async () => []),
         getEmbeddingStatus: vi.fn(() => ({ status: 'mock', loaded: true })),
-        EMBEDDING_VERSION: 1,
+        EMBEDDING_VERSIONS: { scene: 2, lore: 1, rule: 1 },
         getDb: vi.fn(() => null),
         deleteArchiveEmbedding: deleteMock,
     }));
