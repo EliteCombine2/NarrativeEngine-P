@@ -246,6 +246,8 @@ export const en = {
     'tierblock.deepScan.description': 'Runs a two-round LLM deep scan across sealed chapters when standard recall is not enough.',
     'tierblock.recommender.name': 'Context Recommender',
     'tierblock.recommender.description': 'Asks a utility model which world-state fields the GM should focus on this turn.',
+    'tierblock.recommenderThinking.name': 'Context Recommender: Thinking',
+    'tierblock.recommenderThinking.description': 'Lets the Context Recommender reason before it picks. Off by default: measured on DS v4 Flash, thinking made each pick take ~20 s instead of ~1 s and chose no better.',
     'tierblock.importanceRating.name': 'Scene Importance Rating',
     'tierblock.importanceRating.description': 'Rates each committed scene 1–5 so the archive can prioritise high-stakes events.',
     'tierblock.witnessAux.name': 'Witness Capture (Auxiliary)',

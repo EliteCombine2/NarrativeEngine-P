@@ -2,6 +2,7 @@ import type { ArchiveChapter } from '../../types';
 import type { TurnState } from '../turn/turnOrchestrator';
 import { recommendContext } from '../turn/contextRecommender';
 import { tierAllows } from '../turn/aiTier';
+import { isBlockEnabled } from '../turn/blockEnablement';
 import { hasHostModelRole, type HostFacade } from '../turn/hostFacade';
 
 export type RecommenderResult = {
@@ -57,7 +58,10 @@ export async function gatherRecommender(
             context.inventoryItems,
             context.characterProfileData,
             undefined,
-            facade ? (request: import('../turn/hostFacade').ModelRequest) => facade.model.call('utility', request) : undefined
+            facade ? (request: import('../turn/hostFacade').ModelRequest) => facade.model.call('utility', request) : undefined,
+            // Read through the block switch, not tierAllows: tierAllows ignores the
+            // Block View's explicit toggles, so a toggle read through it would do nothing.
+            isBlockEnabled('recommenderThinking', config?.aiTier ?? state.settings.aiTier, state.settings.moduleEnabled),
         );
         const { relevantNPCNames: recommendedNPCNames, inventoryCategories, profileFields } = result;
         console.log(`[ContextGatherer] Recommender returned: ${recommendedNPCNames?.length || 0} NPCs, ${result.relevantLoreIds.length} lore, ${inventoryCategories?.length || 0} inv cats, ${profileFields?.length || 0} profile fields`);
