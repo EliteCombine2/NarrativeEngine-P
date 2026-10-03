@@ -424,7 +424,7 @@ function PcPromptModal({ onCreate, onProceed, onCancel }: {
     onCancel: () => void;
 }) {
     return (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-void/80 backdrop-blur-sm p-4" role="dialog" aria-modal="true" onClick={onCancel}>
+        <div data-motion="overlay" className="fixed inset-0 z-50 flex items-center justify-center bg-void/80 backdrop-blur-sm p-4" role="dialog" aria-modal="true" onClick={onCancel}>
             <div className="bg-surface border border-border shadow-2xl rounded-lg w-full max-w-md p-6" onClick={e => e.stopPropagation()}>
                 <h3 className="text-sm font-bold text-text-primary uppercase tracking-widest mb-2">No Character Yet</h3>
                 <p className="text-[12px] text-text-dim mb-4">

@@ -86,12 +86,12 @@ export function SettingsModal() {
         </div>
 
         {/* Active tab content */}
-        <div className={activeTab !== 'providers' ? 'hidden' : paneClass}><ProvidersTab /></div>
-        <div className={activeTab !== 'presets' ? 'hidden' : paneClass}><PresetsTab /></div>
-        <div className={activeTab !== 'global' ? 'hidden' : paneClass}><GlobalSettingsTab /></div>
-        <div className={activeTab !== 'extensions' ? 'hidden' : 'flex-1 min-h-0 flex flex-col'}><ExtensionsTab /></div>
-        <div className={activeTab !== 'advanced' ? 'hidden' : paneClass}><AdvancedTab /></div>
-        <div className={activeTab !== 'debug' ? 'hidden' : paneClass}><DebugTab /></div>
+        <div data-motion="tab" className={activeTab !== 'providers' ? 'hidden' : paneClass}><ProvidersTab /></div>
+        <div data-motion="tab" className={activeTab !== 'presets' ? 'hidden' : paneClass}><PresetsTab /></div>
+        <div data-motion="tab" className={activeTab !== 'global' ? 'hidden' : paneClass}><GlobalSettingsTab /></div>
+        <div data-motion="tab" className={activeTab !== 'extensions' ? 'hidden' : 'flex-1 min-h-0 flex flex-col'}><ExtensionsTab /></div>
+        <div data-motion="tab" className={activeTab !== 'advanced' ? 'hidden' : paneClass}><AdvancedTab /></div>
+        <div data-motion="tab" className={activeTab !== 'debug' ? 'hidden' : paneClass}><DebugTab /></div>
       </div>
     </ScreenLightbox>
   );
