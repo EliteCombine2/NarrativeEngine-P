@@ -45,6 +45,7 @@ import {
     searchArchiveCandidates, searchLoreCandidates,
 } from './vectorService.js';
 import { archiveEvents, ARCHIVE_WRITTEN } from './archiveEvents.js';
+import { parseArchiveScenes } from '../lib/archiveScenes.js';
 import {
     CHAPTER_SCENE_TARGET, sceneNumbersFromIndex, computeRefit,
     repairChaptersAfterSceneDelete, repointChapterIds, nextChapterNumber, formatChapterId,
@@ -312,25 +313,15 @@ export function sceneCastNames(indexEntry) {
 
 /**
  * The prose of every scene in the archive, by scene id: what scene embeddings are
- * built from. Parses an LF copy (archives written on Windows carry CRLF).
+ * built from.
  *
  * @returns {Map<string, { userContent: string, assistantContent: string }>}
  */
 export function readSceneProse(campaignId) {
     const prose = new Map();
     if (!archiveMdExists(campaignId)) return prose;
-    const raw = readArchiveMd(campaignId).replace(/\r\n/g, '\n');
-    const GM_MARKER = '**[GM]**\n';
-    for (const block of raw.split(/^(?=## SCENE )/m)) {
-        const match = block.match(/^## SCENE (\d+)/);
-        if (!match) continue;
-        const userMatch = block.match(/\*\*\[USER\]\*\*\n([\s\S]*?)\n\n\*\*\[GM\]\*\*/);
-        const gmStart = block.indexOf(GM_MARKER);
-        const gm = gmStart >= 0 ? block.slice(gmStart + GM_MARKER.length) : '';
-        prose.set(match[1].padStart(3, '0'), {
-            userContent: (userMatch ? userMatch[1] : '').trim(),
-            assistantContent: gm.replace(/\n+---\s*$/, '').trim(),
-        });
+    for (const { sceneId, userContent, assistantContent } of parseArchiveScenes(readArchiveMd(campaignId))) {
+        prose.set(sceneId, { userContent, assistantContent });
     }
     return prose;
 }
