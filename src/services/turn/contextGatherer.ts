@@ -191,6 +191,7 @@ export async function gatherMemoryRecallViaRole(
     setMemoryRecallDefaultContext({
         chapters,
         aiTier: facade?.config.aiTier ?? state.settings.aiTier,
+        moduleEnabled: state.settings.moduleEnabled,
         utilityProvider: facade ? undefined : state.getUtilityEndpoint?.(),
         modelCall: facade
             ? (request: import('./hostFacade').ModelRequest) => facade.model.call('utility', request)

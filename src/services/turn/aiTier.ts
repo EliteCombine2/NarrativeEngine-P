@@ -54,7 +54,7 @@ export const MATRIX: Record<AiTier, Record<TierFeature, boolean>> = {
         lodSlottedRag: false,
     },
     pro: {
-        introEngine: false, planner: true, expandQuery: false, reranker: false, archiveFunnel: true,
+        introEngine: false, planner: true, expandQuery: false, reranker: false, archiveFunnel: false,
         deepScan: true, recommender: true, recommenderThinking: false, npcStance: true,
         importanceRating: false, witnessAux: false, npcValidate: true, npcProfileGen: true,
         npcUpdate: true, drivesBackfill: false, profileScan: false, inventoryScan: false, locationScan: false, locationEnrich: true, sealChapter: true,
@@ -66,7 +66,7 @@ export const MATRIX: Record<AiTier, Record<TierFeature, boolean>> = {
         lodSlottedRag: false,
     },
     max: {
-        introEngine: true, planner: true, expandQuery: true, reranker: true, archiveFunnel: true,
+        introEngine: true, planner: true, expandQuery: true, reranker: true, archiveFunnel: false,
         deepScan: true, recommender: true, recommenderThinking: false, npcStance: true,
         importanceRating: true, witnessAux: true, npcValidate: true, npcProfileGen: true,
         npcUpdate: true, drivesBackfill: true, profileScan: true, inventoryScan: true, locationScan: true, locationEnrich: true, sealChapter: true,
@@ -156,7 +156,7 @@ const TIER_BLOCKS: readonly TierBlock[] = [
     { id: 'planner', name: 'Archive Planner', description: 'Asks a utility model which past scenes to recall before the main turn runs.', toggleable: true, trigger: 'automatic', defaultEnabled: true, callsModel: true },
     { id: 'expandQuery', name: 'Query Expansion', description: 'Expands short user messages into richer retrieval queries for semantic archive search.', toggleable: true, trigger: 'automatic', defaultEnabled: false, callsModel: true },
     { id: 'reranker', name: 'Semantic Reranker', description: 'Re-ranks archive search results with a utility model after the first-pass retrieval.', toggleable: true, trigger: 'automatic', defaultEnabled: false, callsModel: true },
-    { id: 'archiveFunnel', name: 'Chapter Recall Funnel', description: 'Uses a multi-round chapter funnel to find the most relevant sealed-chapter scenes.', toggleable: true, trigger: 'automatic', defaultEnabled: true, callsModel: true },
+    { id: 'archiveFunnel', name: 'Chapter Recall Funnel', description: 'Narrows scene recall to the chapters a utility model confirms, then matches keywords inside them. Off by default: archive-wide search found the right scenes where the funnel locked onto the wrong chapter, and the funnel ignores meaning search and the Archive Planner.', toggleable: true, trigger: 'automatic', defaultEnabled: false, callsModel: true },
     { id: 'deepScan', name: 'Deep Archive Search', description: 'Runs a two-round LLM deep scan across sealed chapters when standard recall is not enough.', toggleable: true, trigger: 'automatic', defaultEnabled: true, callsModel: true },
     { id: 'recommenderThinking', name: 'Context Recommender: Thinking', description: 'Lets the Context Recommender reason before it picks. Off by default: measured on DS v4 Flash, thinking made each pick take ~20 s instead of ~1 s and chose no better.', toggleable: true, trigger: 'automatic', defaultEnabled: false, callsModel: true },
     { id: 'npcStance', name: 'NPC Stance Reasoning', description: 'Computes a scene-specific per-NPC stance for the Cognitive Process panel.', toggleable: true, trigger: 'automatic', defaultEnabled: true, callsModel: true },

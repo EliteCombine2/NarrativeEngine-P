@@ -241,7 +241,7 @@ export const en = {
     'tierblock.reranker.name': 'Semantic Reranker',
     'tierblock.reranker.description': 'Re-ranks archive search results with a utility model after the first-pass retrieval.',
     'tierblock.archiveFunnel.name': 'Chapter Recall Funnel',
-    'tierblock.archiveFunnel.description': 'Uses a multi-round chapter funnel to find the most relevant sealed-chapter scenes.',
+    'tierblock.archiveFunnel.description': 'Narrows scene recall to the chapters a utility model confirms, then matches keywords inside them. Off by default: archive-wide search found the right scenes where the funnel locked onto the wrong chapter, and the funnel ignores meaning search and the Archive Planner.',
     'tierblock.deepScan.name': 'Deep Archive Search',
     'tierblock.deepScan.description': 'Runs a two-round LLM deep scan across sealed chapters when standard recall is not enough.',
     'tierblock.recommender.name': 'Context Recommender',
