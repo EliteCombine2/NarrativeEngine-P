@@ -11,7 +11,7 @@ vi.mock('../../turn/hostFacade', () => ({
     hasHostModelRole: () => true,
 }));
 
-import { gatherSemanticCandidates, sceneRerankSummary } from '../semanticCandidates';
+import { gatherSemanticCandidates, sceneRerankSummary, recentSceneText } from '../semanticCandidates';
 import type { TurnState } from '../../turn/turnOrchestrator';
 import type { HostFacade } from '../../turn/hostFacade';
 import type { ArchiveIndexEntry } from '../../../types';
@@ -32,13 +32,17 @@ function setup(input: string, moduleEnabled?: Record<string, boolean>) {
     const state = {
         input,
         settings: { aiTier: 'max', moduleEnabled },
-        npcLedger: [{ name: 'Therese' }],
+        npcLedger: [{ name: 'Therese' }, { name: 'Kaiser Aldricht Voss' }],
+        messages: [
+            { role: 'user', content: 'I sit down across from Therese.' },
+            { role: 'assistant', content: 'Therese slides the sealed letter across the desk.' },
+        ],
         loreChunks: [],
         archiveIndex,
         activeCampaignId: 'c1',
     } as unknown as TurnState;
     const facade = {
-        data: { input, npcLedger: state.npcLedger, loreChunks: [], archiveIndex, activeCampaignId: 'c1' },
+        data: { input, npcLedger: state.npcLedger, messages: state.messages, loreChunks: [], archiveIndex, activeCampaignId: 'c1' },
         config: { aiTier: 'max' },
         model: { call: modelCall },
     } as unknown as HostFacade;
@@ -85,6 +89,10 @@ describe('gatherSemanticCandidates — query expansion', () => {
         expect(request.thinkingEffort).toBe('off');
         const body = JSON.parse((vi.mocked(fetch).mock.calls[0][1] as RequestInit).body as string);
         expect(body.queries).toEqual(['ask her about it', 'ask Therese about the letter', 'Therese letter of introduction']);
+        // It sees the last exchange and only the NPCs named there, not the start of the ledger.
+        expect(request.prompt).toContain('Therese slides the sealed letter');
+        expect(request.prompt).toContain('CHARACTERS IN THE RECENT SCENE: Therese');
+        expect(request.prompt).not.toContain('Kaiser');
     });
 });
 
@@ -97,5 +105,18 @@ describe('sceneRerankSummary', () => {
     it('falls back to keywords when the scene has no event tags', () => {
         const entry = { ...archiveIndex[0], events: undefined, witnesses: [] } as ArchiveIndexEntry;
         expect(sceneRerankSummary(entry)).toBe('docks, lantern | player: player line 101');
+    });
+});
+
+describe('recentSceneText', () => {
+    it('keeps the last player line and GM reply, skipping system messages', () => {
+        const text = recentSceneText([
+            { role: 'user', content: 'old' },
+            { role: 'assistant', content: 'older reply' },
+            { role: 'user', content: 'I nod.' },
+            { role: 'system', content: 'note' },
+            { role: 'assistant', content: 'She smiles.' },
+        ] as never);
+        expect(text).toBe('PLAYER: I nod.\n\nGM: She smiles.');
     });
 });

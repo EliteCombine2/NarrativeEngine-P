@@ -12,6 +12,7 @@
  * separation only, not optimisation.
  */
 
+import { reciprocalRankFusion } from '../lib/rankFusion.js';
 import {
     storeArchiveEmbedding,
     storeLoreEmbedding,
@@ -87,8 +88,8 @@ export async function embedAndStoreLore(campaignId, loreId, text) {
  * Search the archive for `query` (single or multi-query). Used by the
  * semantic-candidates route. Returns an array of { sceneId } hits.
  *
- * If `queries` is a non-empty array, runs each query and unions the sceneIds
- * into a deduplicated array. Otherwise runs the single `query`.
+ * If `queries` is a non-empty array, runs each query and fuses the ranked lists
+ * (reciprocal rank fusion, `lib/rankFusion.js`). Otherwise runs the single `query`.
  *
  * `scopeSceneIds` (WO-10): optional array of scene IDs to restrict recall to.
  * Forwarded as `opts.scopeIds` to `searchArchive`; null/empty/absent → unscoped
@@ -98,15 +99,15 @@ export async function embedAndStoreLore(campaignId, loreId, text) {
  */
 export async function searchArchiveCandidates(campaignId, { query, queries, limit, diversity = true, scopeSceneIds } = {}) {
     if (queries && Array.isArray(queries) && queries.length > 0) {
-        const allSceneIds = new Set();
+        const lists = [];
         for (const q of queries) {
             if (!q?.trim()) continue;
             const embedding = await embedQuery(q);
-            const results = searchArchive(campaignId, embedding, limit || 20, diversity, { scopeIds: scopeSceneIds });
-            for (const r of results) allSceneIds.add(r.sceneId);
+            lists.push(searchArchive(campaignId, embedding, limit || 20, diversity, { scopeIds: scopeSceneIds }).map(r => r.sceneId));
         }
-        console.log(`[VectorStore] archive candidates for ${queries.length} queries: [${[...allSceneIds].join(', ')}]`);
-        return [...allSceneIds];
+        const sceneIds = reciprocalRankFusion(lists);
+        console.log(`[VectorStore] archive candidates for ${queries.length} queries: [${sceneIds.join(', ')}]`);
+        return sceneIds;
     }
     if (!query?.trim()) return [];
     const embedding = await embedQuery(query);
@@ -122,15 +123,15 @@ export async function searchArchiveCandidates(campaignId, { query, queries, limi
  */
 export async function searchLoreCandidates(campaignId, { query, queries, limit, diversity = true }) {
     if (queries && Array.isArray(queries) && queries.length > 0) {
-        const allLoreIds = new Set();
+        const lists = [];
         for (const q of queries) {
             if (!q?.trim()) continue;
             const embedding = await embedQuery(q);
-            const results = searchLore(campaignId, embedding, limit || 15, diversity);
-            for (const r of results) allLoreIds.add(r.loreId);
+            lists.push(searchLore(campaignId, embedding, limit || 15, diversity).map(r => r.loreId));
         }
-        console.log(`[VectorStore] lore candidates for ${queries.length} queries: [${[...allLoreIds].join(', ')}]`);
-        return [...allLoreIds];
+        const loreIds = reciprocalRankFusion(lists);
+        console.log(`[VectorStore] lore candidates for ${queries.length} queries: [${loreIds.join(', ')}]`);
+        return loreIds;
     }
     if (!query?.trim()) return [];
     const embedding = await embedQuery(query);

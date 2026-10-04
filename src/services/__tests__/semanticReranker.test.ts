@@ -94,3 +94,22 @@ describe('rerankCandidates — thinking', () => {
         expect(modelCall.mock.calls[0][0].thinkingEffort).toBe('off');
     });
 });
+
+describe('rerankCandidates — bare-number ids', () => {
+    const scenes = ['062', '118', '119', '534', '533', '351'].map(id => ({ id, summary: `scene ${id}`, type: 'scene' as const }));
+
+    it('accepts unquoted ids, including a leading zero that is not valid JSON', async () => {
+        mockLlmCall.mockResolvedValueOnce('[534, 062, 118]');
+        expect(await rerankCandidates('query', scenes, endpoint)).toEqual(['534', '062', '118']);
+    });
+
+    it('matches a number without its padding', async () => {
+        mockLlmCall.mockResolvedValueOnce('[62, 533]');
+        expect(await rerankCandidates('query', scenes, endpoint)).toEqual(['062', '533']);
+    });
+
+    it('still drops ids that are not candidates', async () => {
+        mockLlmCall.mockResolvedValueOnce('[999, 118]');
+        expect(await rerankCandidates('query', scenes, endpoint)).toEqual(['118']);
+    });
+});

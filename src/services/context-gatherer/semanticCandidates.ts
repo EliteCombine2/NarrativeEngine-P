@@ -1,4 +1,5 @@
-import type { NPCEntry, LoreChunk, ArchiveIndexEntry } from '../../types';
+import type { NPCEntry, LoreChunk, ArchiveIndexEntry, ChatMessage } from '../../types';
+import { mentionedNpcs } from '../npc/witnessCapture';
 import type { TurnState } from '../turn/turnOrchestrator';
 import { API_BASE as API } from '../../lib/apiBase';
 import { rerankCandidates, type RerankCandidate } from '../retrieval/semanticReranker';
@@ -19,12 +20,29 @@ export function sceneRerankSummary(entry: ArchiveIndexEntry): string {
 
 const CALLBACK_REGEX =/\b(remember|earlier|back when|before|previously|that .*(we|i) (did|met|fought|saw|found|got))\b/i;
 
-async function expandQuery(query: string, npcLedger: NPCEntry[], utilityEndpoint: import('../../types').EndpointConfig | undefined, modelCall?: (request: ModelRequest) => Promise<ModelResponse>): Promise<string[]> {
+/** The last exchange, trimmed: what "her", "it" or "the job" in a short message refers to. */
+export function recentSceneText(messages: readonly ChatMessage[]): string {
+    const recent = messages.filter(m => m.role === 'user' || m.role === 'assistant').slice(-2);
+    return recent.map(m => `${m.role === 'assistant' ? 'GM' : 'PLAYER'}: ${(m.content ?? '').slice(0, m.role === 'assistant' ? 1500 : 400)}`).join('\n\n');
+}
+
+// Expansion used to get the first 10 ledger NPCs (the oldest, usually unrelated) and no
+// scene, so the model wove random names into the query ("the blood-debt pact … Kaiser
+// Voss") and recall got worse. It now sees the last exchange and only the NPCs named in it.
+async function expandQuery(query: string, messages: readonly ChatMessage[], npcLedger: NPCEntry[], utilityEndpoint: import('../../types').EndpointConfig | undefined, modelCall?: (request: ModelRequest) => Promise<ModelResponse>): Promise<string[]> {
     try {
-        const npcContext = npcLedger.slice(0, 10).map(n => n.name).join(', ');
-        const prompt = `User query: "${query}"
-Known NPCs: ${npcContext}
-Generate 2 alternative phrasings that expand pronouns, add likely entity names from context, and use synonyms. Return ONLY a JSON array of 2 strings. No prose.`;
+        const scene = recentSceneText(messages);
+        const names = mentionedNpcs(`${scene}\n${query}`, npcLedger).slice(0, 12).map(n => n.name);
+        const prompt = `The player's message below is short, so a memory search on it alone may miss the past scene they mean. Rewrite it as 2 standalone search queries for the campaign archive. Replace pronouns and vague references ("her", "it", "the job", "that place") with the specific people, places and things they refer to. Use ONLY names that appear in the recent scene, the character list, or the message itself. Do not invent names, events or details.
+
+RECENT SCENE:
+"""
+${scene || '(none)'}
+"""
+CHARACTERS IN THE RECENT SCENE: ${names.join(', ') || '(none)'}
+PLAYER MESSAGE: "${query}"
+
+Return ONLY a JSON array of 2 strings. No prose.`;
 
         const raw = modelCall
             ? (await modelCall({ prompt, temperature: 0.2, priority: 'high', maxTokens: 200, thinkingEffort: 'off', trackingLabel: 'query-expansion', timeoutMs: AI_CALL_TIMEOUT_MS })).content
@@ -85,7 +103,7 @@ export async function gatherSemanticCandidates(
             loreChunks.length > 0 ||
             (data?.context?.rulesChunks?.length ?? state.context?.rulesChunks?.length ?? 0) > 0;
         if ((isCallback || isShort) && hasRetrievableContent && utilityAvailable && isBlockEnabled('expandQuery', config?.aiTier ?? state.settings.aiTier, state.settings.moduleEnabled)) {
-            const expanded = await expandQuery(input, npcLedger, utilityEndpoint, modelCall);
+            const expanded = await expandQuery(input, data?.messages ?? state.messages ?? [], npcLedger, utilityEndpoint, modelCall);
             queries = expanded;
             if (expanded.length > 1) {
                 console.log(`[QueryExpansion] "${input}" → ${expanded.length} variants`);
