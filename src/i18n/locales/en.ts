@@ -259,7 +259,7 @@ export const en = {
     'tierblock.npcUpdate.name': 'NPC Profile Update',
     'tierblock.npcUpdate.description': 'Background LLM call that refreshes known NPC profiles from the latest scene text.',
     'tierblock.drivesBackfill.name': 'NPC Drives Backfill',
-    'tierblock.drivesBackfill.description': 'Backfills missing goal/want records for known NPCs so the agency engine can act on them.',
+    'tierblock.drivesBackfill.description': "Disabled: the agency system (wants, personality, goal records) replaced drives, and backfilling both gave older NPCs two competing sets of motivations. Older NPCs now get agency fields the first time the GM names them. Kept so stored settings stay valid.",
     'tierblock.profileScan.name': 'Character Profile Scan',
     'tierblock.profileScan.description': 'Periodically scans chat history to keep the player character sheet and active traits current.',
     'tierblock.inventoryScan.name': 'Inventory Scan',

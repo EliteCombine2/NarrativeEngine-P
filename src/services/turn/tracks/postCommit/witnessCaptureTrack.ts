@@ -1,6 +1,6 @@
 import { api } from '../../../llm/apiClient';
 import { backgroundQueue } from '../../../infrastructure/backgroundQueue';
-import { witnessesFromHeader, witnessesFromModel, mergeWitnesses } from '../../../npc/witnessCapture';
+import { witnessesFromHeader, witnessesFromModel } from '../../../npc/witnessCapture';
 import { isBlockEnabled } from '../../blockEnablement';
 import type { PostTurnTrack, PostCommitTrackContext } from '../types';
 import { assertStillActive, makeGuarded } from '../guarded';
@@ -31,7 +31,7 @@ export const witnessCaptureTrack: PostTurnTrack<PostCommitTrackContext> = {
             console.log(`[WitnessCapture] Scene #${entry.sceneId} witnesses (${witnessSource}): ${witnesses.join(', ') || '(none)'}`);
         };
 
-        const fromHeader = witnessesFromHeader(ctx.lastAssistantContent, serverWitnesses, ledger);
+        const fromHeader = witnessesFromHeader(ctx.lastAssistantContent, ledger);
         if (fromHeader !== null) {
             await save(fromHeader, 'header').catch(err => console.warn('[WitnessCapture] Header patch failed:', err));
             return;
@@ -39,12 +39,12 @@ export const witnessCaptureTrack: PostTurnTrack<PostCommitTrackContext> = {
 
         const tier = ctx.facade?.config.aiTier ?? ctx.state.settings.aiTier;
         const modelCall = ctx.storyModelCall;
-        if (!modelCall || !isBlockEnabled('witnessAux', tier, ctx.state.settings.moduleEnabled)) return;
+        if (!modelCall || !isBlockEnabled('witnessAux', tier, ctx.facade?.config.moduleEnabled ?? ctx.state.settings.moduleEnabled)) return;
         backgroundQueue.push(`Witness-Capture:${entry.sceneId}`, async () => {
             if (!assertStillActive(ctx.activeCampaignId, 'Witness-Capture')) return;
             const present = await witnessesFromModel(ctx.lastAssistantContent, ledger, modelCall);
             if (present.length === 0) return;
-            await save(mergeWitnesses(present, serverWitnesses, ledger), 'aux_fallback');
+            await save(present.map(npc => npc.name), 'aux_fallback');
         }).catch(err => console.warn('[WitnessCapture] Background capture failed:', err));
     },
 };

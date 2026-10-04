@@ -91,7 +91,7 @@ describe('WORKORDER-P5-01 — listTierBlocks declaration table', () => {
     });
 
     it('every pipeline-fired feature is automatic', () => {
-        const nonAutomaticIds = new Set(['arcSpawn', 'npcProfileGen']);
+        const nonAutomaticIds = new Set(['arcSpawn', 'npcProfileGen', 'drivesBackfill']);
         for (const block of blocks) {
             if (nonAutomaticIds.has(block.id)) continue;
             expect(block.trigger, `${block.id} should be automatic`).toBe('automatic');

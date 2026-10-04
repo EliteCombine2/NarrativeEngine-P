@@ -1,33 +1,28 @@
 import { describe, expect, it, vi } from 'vitest';
-import { mentionedNpcs, mergeWitnesses, witnessesFromHeader, witnessesFromModel } from '../witnessCapture';
+import { mentionedNpcs, witnessesFromHeader, witnessesFromModel } from '../witnessCapture';
 import type { NPCEntry } from '../../../types';
 
 const npc = (id: string, name: string, aliases = '') => ({ id, name, aliases }) as NPCEntry;
 const ledger = [npc('n1', 'Rin Holmes'), npc('n2', 'Helena Broadmarsh'), npc('n3', 'Therese Soll'), npc('n4', 'The Broker')];
 
 describe('witnessesFromHeader', () => {
-    it('uses the 👥 line and keeps a speaker the GM left off it', () => {
-        // The server listed Therese because she spoke; the GM's header forgot her.
-        expect(witnessesFromHeader('📍 Study | 👥 [**Rin**], [**Helena**]\n\n[Therese] "Sit."', ['Therese'], ledger))
-            .toEqual(['Rin Holmes', 'Helena Broadmarsh', 'Therese Soll']);
+    it('trusts the 👥 line as written, in canonical names', () => {
+        expect(witnessesFromHeader('📍 Study | 👥 [**Rin**], [**Helena**]', ledger)).toEqual(['Rin Holmes', 'Helena Broadmarsh']);
     });
 
-    it('does not list a speaker twice under two spellings', () => {
-        expect(witnessesFromHeader('👥 [**Rin**]', ['Rin'], ledger)).toEqual(['Rin Holmes']);
+    // Scene 577: the GM bolds every name, so the server counted Therese, who only
+    // signed a letter on the table, as a speaker. The 👥 line is the authority.
+    it('does not add a name that only appears in bracket markup elsewhere', () => {
+        const gm = '👥 [**Grey**], [**Rin**]\n\n| **The Letter** | [**Therese Soll**]. Unopened. Inner sheet vellum. |';
+        expect(witnessesFromHeader(gm, ledger)).toEqual(['Rin Holmes']);
     });
 
-    it('"Nobody" keeps only the speakers', () => {
-        expect(witnessesFromHeader('👥 Nobody', [], ledger)).toEqual([]);
+    it('"Nobody" means no witnesses', () => {
+        expect(witnessesFromHeader('👥 Nobody', ledger)).toEqual([]);
     });
 
     it('null when the reply has no 👥 line', () => {
-        expect(witnessesFromHeader('Rain on the window.', ['Rin'], ledger)).toBeNull();
-    });
-});
-
-describe('mergeWitnesses', () => {
-    it('keeps an unknown speaker as written', () => {
-        expect(mergeWitnesses([ledger[0]], ['Mira'], ledger)).toEqual(['Rin Holmes', 'Mira']);
+        expect(witnessesFromHeader('Rain on the window.', ledger)).toBeNull();
     });
 });
 

@@ -78,7 +78,7 @@ const EXPECTED: Record<AiTier, Record<TierFeature, boolean>> = {
         introEngine: true, planner: false, expandQuery: false, reranker: true, archiveFunnel: false,
         deepScan: true, recommender: true, recommenderThinking: false, npcStance: true,
         importanceRating: true, witnessAux: true, npcValidate: true, npcProfileGen: true,
-        npcUpdate: true, drivesBackfill: true, profileScan: true, inventoryScan: true, locationScan: true, locationEnrich: true, sealChapter: true,
+        npcUpdate: true, drivesBackfill: false, profileScan: true, inventoryScan: true, locationScan: true, locationEnrich: true, sealChapter: true,
         sceneStakesClassify: true,
         heartbeatTick: true, timeskipRun: true,
         arcTick: true, arcSpawn: true,

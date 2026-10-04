@@ -18,27 +18,18 @@ import { parsePresentHeader, resolvePresentNpcs } from './presentHeader';
  *   2. otherwise, on Max, a model reads the reply and names who was physically
  *      present (`witnessAux`);
  *   3. otherwise the server's list stands.
- * Speakers the server found are kept either way: whoever spoke was there.
+ * Steps 1 and 2 replace the server's list rather than add to it (see witnessesFromHeader).
  */
 
-/** Merge the present list with the server's speakers, canonical names first, each person once. */
-export function mergeWitnesses(present: readonly NPCEntry[], serverWitnesses: readonly string[], ledger: readonly NPCEntry[]): string[] {
-    const resolve = createWitnessResolver(ledger);
-    const names = present.map(npc => npc.name);
-    for (const raw of serverWitnesses) {
-        const hits = resolve(raw);
-        if (hits.length > 0 && hits.some(npc => present.includes(npc))) continue;
-        const name = hits.length === 1 ? hits[0].name : raw;
-        if (!names.includes(name)) names.push(name);
-    }
-    return names;
-}
-
-/** The `👥` field's witnesses, or `null` when the reply has no `👥` field. */
-export function witnessesFromHeader(gmText: string, serverWitnesses: readonly string[], ledger: readonly NPCEntry[]): string[] | null {
+/** The `👥` field's witnesses (ledger NPCs it names), or `null` when the reply has no
+ *  `👥` field. The field is trusted as written, as mobile does. The server's list is not
+ *  merged in: it counts any `[**Name**]` followed by text as a speaker, and GMs that bold
+ *  every name in brackets turn that into "everyone mentioned" (scene 577 listed Therese,
+ *  who only signed a letter lying on the table). */
+export function witnessesFromHeader(gmText: string, ledger: readonly NPCEntry[]): string[] | null {
     const names = parsePresentHeader(gmText);
     if (names === null) return null;
-    return mergeWitnesses(resolvePresentNpcs(names, ledger), serverWitnesses, ledger);
+    return resolvePresentNpcs(names, ledger).map(npc => npc.name);
 }
 
 // Name words that say nothing about who someone is ("The Broker", "Lady Soll").

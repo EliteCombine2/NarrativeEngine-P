@@ -14,6 +14,10 @@ describe('parsePresentHeader', () => {
         expect(parsePresentHeader('👥 Present: Rin; Mira')).toEqual(['Rin', 'Mira']);
     });
 
+    it('reads a bold label (a closing header some GMs repeat at the end of the reply)', () => {
+        expect(parsePresentHeader('👥 **Present:** [**Grey**], [**Rin**], [**Sanna**]')).toEqual(['Grey', 'Rin', 'Sanna']);
+    });
+
     // The shapes the owner's campaigns actually use (none carry the "[Present]" label).
     it('reads bracketed, bold names', () => {
         expect(parsePresentHeader('Scene #250 | 📅 Night | 📍 Study | 👥 [**Rin**], [**Helena Broadmarsh**], The Voice (Sensed)'))

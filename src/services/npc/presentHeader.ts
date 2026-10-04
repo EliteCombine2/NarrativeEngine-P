@@ -27,11 +27,12 @@ const PLACEHOLDER_RE = /^(?:unknown|someone|somebody|stranger|others?|various)$/
 export function parsePresentHeader(content: string): string[] | null {
     const matches = [...content.matchAll(PRESENT_HEADER_RE)];
     if (matches.length === 0) return null;
+    // Strip markup BEFORE the label: models bold it too ("👥 **Present:** [**Grey**], …").
     let raw = matches[matches.length - 1][1]
         .split(/📅|📍/u)[0]
-        .replace(/^\s*\[?\s*present\s*\]?\s*:?/i, '')
         .replace(/\([^)]*\)/g, '')
-        .replace(/[[\]*_`"«»]/g, '');
+        .replace(/[[\]*_`"«»]/g, '')
+        .replace(/^\s*present\b\s*:?/i, '');
     raw = raw.replace(/^[\s\-–—:]+|[\s\-–—:]+$/g, '').trim();
     if (!raw || NOBODY_RE.test(raw)) return [];
     return raw
