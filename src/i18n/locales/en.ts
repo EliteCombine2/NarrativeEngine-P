@@ -251,7 +251,7 @@ export const en = {
     'tierblock.importanceRating.name': 'Scene Importance Rating',
     'tierblock.importanceRating.description': 'Rates each committed scene 1–5 so the archive can prioritise high-stakes events.',
     'tierblock.witnessAux.name': 'Witness Capture (Auxiliary)',
-    'tierblock.witnessAux.description': 'Reserved tier slot for an auxiliary witness-capture pass. No call site exists yet — neither a pipeline step nor a button.',
+    'tierblock.witnessAux.description': "When the GM's reply has no 👥 line, a model reads it and names who was physically present, so NPC knowledge limits follow who saw the scene rather than who spoke. Replies with a 👥 line use it directly on every tier.",
     'tierblock.npcValidate.name': 'NPC Name Validation',
     'tierblock.npcValidate.description': 'Validates extracted NPC names with a fail-closed LLM check before adding them as suggestions.',
     'tierblock.npcProfileGen.name': 'NPC Profile Generation',

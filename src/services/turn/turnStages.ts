@@ -43,7 +43,7 @@ import { hasHostModelRole, type HostFacade } from './hostFacade';
 import { emitCoreEvent, emitCoreEventLazy } from '../mods/events';
 import { runPromptInterceptors } from '../mods/interceptors';
 import { runFactPublishers } from '../mods/facts';
-import { blockTokenCap } from './blockEnablement';
+import { blockTokenCap, isBlockEnabled } from './blockEnablement';
 import { BUILTIN_IDS, getBuiltinTokenCap } from '../payload/contributions/builtins';
 
 const MAX_TOOL_CALLS_PER_TURN = 5;
@@ -237,7 +237,7 @@ export async function runIntroEngineStage(
     const messages = data?.messages ?? state.messages;
     const npcLedger = data?.npcLedger ?? state.npcLedger;
     const provider = facade ? undefined : state.provider;
-    if (!context.npcIntroEngineActive || !tierAllows(config?.aiTier ?? settings.aiTier, 'introEngine')) return;
+    if (!context.npcIntroEngineActive || !isBlockEnabled('introEngine', config?.aiTier ?? settings.aiTier, settings.moduleEnabled)) return;
     const seenNpcNames = new Set((npcLedger ?? []).map((n: NPCEntry) => n.name.toLowerCase()));
     try {
         const auxProvider = facade ? undefined : state.getFreshAuxiliaryProvider?.() ?? provider;

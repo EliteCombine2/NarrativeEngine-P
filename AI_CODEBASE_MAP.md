@@ -432,8 +432,8 @@ The main game loop flows through `runTurn()` in `turnOrchestrator.ts` (234 lines
 `postTurnPipeline.ts` (524 lines) — track orchestrator:
 - Prologue tracks: `autoProfileTrack`, `digestClearTrack`.
 - `Promise.allSettled` post-turn tracks: `npcTrack`, `pressureTrack` + mod-registered compute tracks (e.g. `mod.arc.compute`).
-- Sequential tracks: `agencyTrack`, `locationHeaderTrack`, `onStageTrack`, `repressionTrack`.
-- Post-commit tracks (9): `chapterSealTrack`, `eventExtractionTrack`, `inventoryScanTrack`, `locationScanTrack`, `pcDriftTrack`, `profileScanTrack`, `relationshipMemoryTrack`, `traitScanTrack`, `travelAdvanceTrack` (halt safety valve only — if the location header names an unrelated place it halts the journey).
+- Sequential tracks: `agencyTrack`, `locationHeaderTrack`, `onStageTrack`, `repressionTrack`. `onStageTrack` reads the GM's 👥 field through `services/npc/presentHeader.ts`, which accepts every header shape the rulesets use (the old exact `👥 [Present]` regex matched none of the owner's campaigns).
+- Post-commit tracks (10): `chapterSealTrack`, `eventExtractionTrack`, `witnessCaptureTrack` (scene witnesses from the 👥 field on every tier, or a thinking-off model read on Max via `witnessAux`; `services/npc/witnessCapture.ts`), `inventoryScanTrack`, `locationScanTrack`, `pcDriftTrack`, `profileScanTrack`, `relationshipMemoryTrack`, `traitScanTrack`, `travelAdvanceTrack` (halt safety valve only — if the location header names an unrelated place it halts the journey).
 
 `travelState.ts` (396 lines) + `travelPress.ts` + `travelFacts.ts` + `departureComposer.ts` + `mapTravelPreview.ts` — the WO 6.5 travel system: travel is an **engine action, not an LLM turn**. `depart`/`departMultiHop` (pathfinder routes from the worldmap mod), `advance` (one press = one day = one checkpoint), `arrive`, `abandonJourney`, `halt`, `jump`. Engine `role:'system'` checkpoint messages, no model call. `travelFacts` feeds the Continuity Director hard world facts (max 3, silent unless `context.worldDay` set).
 

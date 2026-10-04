@@ -42,9 +42,9 @@ export async function rateImportance(
 
     try {
         const raw = modelCall
-            ? (await modelCall({ prompt, priority: 'low', trackingLabel: 'importance-rating', timeoutMs: AI_CALL_TIMEOUT_MS })).content
+            ? (await modelCall({ prompt, priority: 'low', thinkingEffort: 'off', trackingLabel: 'importance-rating', timeoutMs: AI_CALL_TIMEOUT_MS })).content
             : provider
-                ? await llmCall(provider, prompt, { priority: 'low', trackingLabel: 'importance-rating', timeoutMs: AI_CALL_TIMEOUT_MS })
+                ? await llmCall(provider, prompt, { priority: 'low', thinkingEffort: 'off', trackingLabel: 'importance-rating', timeoutMs: AI_CALL_TIMEOUT_MS })
                 : '';
         const match = raw.trim().match(/\b([1-5])\b/);
         if (match) return parseInt(match[1], 10);

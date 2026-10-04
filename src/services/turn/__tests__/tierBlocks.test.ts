@@ -79,10 +79,6 @@ describe('WORKORDER-P5-01 — listTierBlocks declaration table', () => {
         // Per §5: a feature with no pipeline step AND no button is `unwired`, not `manual`.
         // `manual` means "fires from a button"; these have no button either. Labelling them
         // manual sends a user hunting for a control that does not exist.
-        const witnessAux = blocks.find(b => b.id === 'witnessAux');
-        expect(witnessAux).toBeDefined();
-        expect(witnessAux!.trigger).toBe('unwired');
-
         const npcProfileGen = blocks.find(b => b.id === 'npcProfileGen');
         expect(npcProfileGen).toBeDefined();
         expect(npcProfileGen!.trigger).toBe('unwired');
@@ -94,8 +90,8 @@ describe('WORKORDER-P5-01 — listTierBlocks declaration table', () => {
         expect(arcSpawn!.callsModel).toBe(true);
     });
 
-    it('the 23 pipeline-fired features are automatic', () => {
-        const nonAutomaticIds = new Set(['arcSpawn', 'witnessAux', 'npcProfileGen']);
+    it('every pipeline-fired feature is automatic', () => {
+        const nonAutomaticIds = new Set(['arcSpawn', 'npcProfileGen']);
         for (const block of blocks) {
             if (nonAutomaticIds.has(block.id)) continue;
             expect(block.trigger, `${block.id} should be automatic`).toBe('automatic');

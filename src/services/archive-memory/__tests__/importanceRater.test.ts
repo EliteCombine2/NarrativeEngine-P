@@ -1,5 +1,5 @@
-import { describe, expect, it } from 'vitest';
-import { ratingToIndexImportance } from '../importanceRater';
+import { describe, expect, it, vi } from 'vitest';
+import { rateImportance, ratingToIndexImportance } from '../importanceRater';
 
 // The index's readers threshold on the server heuristic's 1–10 scale. These pin the
 // two thresholds a Max-tier (AI-rated) scene could never reach before the mapping.
@@ -25,5 +25,13 @@ describe('ratingToIndexImportance', () => {
     it('stays inside 1–10', () => {
         expect(ratingToIndexImportance(0)).toBe(1);
         expect(ratingToIndexImportance(9)).toBe(10);
+    });
+});
+
+describe('rateImportance — thinking', () => {
+    it('asks for no thinking: the next Send waits on this one-digit answer', async () => {
+        const modelCall = vi.fn().mockResolvedValue({ content: '4' });
+        await expect(rateImportance(undefined, 'I sign the deal.', 'Therese seals it.', [], modelCall)).resolves.toBe(4);
+        expect(modelCall.mock.calls[0][0].thinkingEffort).toBe('off');
     });
 });

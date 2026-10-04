@@ -37,9 +37,9 @@ Return ONLY a JSON array of the candidate ids most relevant to the query, in des
 
     try {
         const raw = modelCall
-            ? (await modelCall({ prompt, temperature: 0.1, priority: 'high', maxTokens: 500, trackingLabel: 'semantic-rerank', timeoutMs: opts?.timeoutMs ?? AI_CALL_TIMEOUT_MS })).content
+            ? (await modelCall({ prompt, temperature: 0.1, priority: 'high', maxTokens: 500, thinkingEffort: 'off', trackingLabel: 'semantic-rerank', timeoutMs: opts?.timeoutMs ?? AI_CALL_TIMEOUT_MS })).content
             : utilityEndpoint
-                ? await llmCall(utilityEndpoint, prompt, { temperature: 0.1, priority: 'high', maxTokens: 500, trackingLabel: 'semantic-rerank', timeoutMs: opts?.timeoutMs ?? AI_CALL_TIMEOUT_MS })
+                ? await llmCall(utilityEndpoint, prompt, { temperature: 0.1, priority: 'high', maxTokens: 500, thinkingEffort: 'off', trackingLabel: 'semantic-rerank', timeoutMs: opts?.timeoutMs ?? AI_CALL_TIMEOUT_MS })
                 : '';
 
         const { value: parsed, parseOk } = extractJsonRobust<string[]>(raw, []);

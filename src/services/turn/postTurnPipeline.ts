@@ -7,7 +7,7 @@ import { sealChapterCombined, type SealModelCall } from '../saveFileEngine';
 import { toast } from '../../components/Toast';
 import { mergeLifecycleEntries } from '../campaign-state/divergenceRegister';
 import { saveDivergenceRegister } from '../../store/campaignStore';
-import { tierAllows } from './aiTier';
+import { isBlockEnabled } from './blockEnablement';
 import { startPostTurnTracks } from './tracks';
 import { startPostCommitTracks } from './tracks/postCommit';
 import { startPrologueTracks } from './tracks/prologue';
@@ -201,7 +201,7 @@ async function runArchiveTrack(
         let sceneImportance: number | undefined;
         const importanceProvider = facade ? undefined : state.getFreshProvider();
         const importanceAvailable = facade ? hasHostModelRole(facade, 'story') : Boolean(importanceProvider);
-        if (importanceAvailable && tierAllows(facade?.config.aiTier ?? state.settings.aiTier, 'importanceRating')) {
+        if (importanceAvailable && isBlockEnabled('importanceRating', facade?.config.aiTier ?? state.settings.aiTier, state.settings.moduleEnabled)) {
             try {
                 const rating = await rateImportance(importanceProvider, displayInput, lastAssistantContent, allMsgs, facade ? (request: import('./hostFacade').ModelRequest) => facade.model.call('story', request) : undefined);
                 sceneImportance = ratingToIndexImportance(rating);

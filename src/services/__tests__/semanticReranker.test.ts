@@ -86,3 +86,11 @@ describe('rerankCandidates', () => {
         expect(result.length).toBeLessThanOrEqual(3);
     });
 });
+
+describe('rerankCandidates — thinking', () => {
+    it('asks for no thinking, so a 500-token cap is not spent before the answer', async () => {
+        const modelCall = vi.fn().mockResolvedValue({ content: '["id-001"]' });
+        await rerankCandidates('query', makeCandidates(6), undefined, undefined, modelCall);
+        expect(modelCall.mock.calls[0][0].thinkingEffort).toBe('off');
+    });
+});
