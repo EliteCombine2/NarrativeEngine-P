@@ -13,6 +13,7 @@ import { ChatActionStrip } from './chat/ChatActionStrip';
 import { ChatComposer } from './chat/ChatComposer';
 import { ChatNavFabs } from './chat/ChatNavFabs';
 import { ChatMessageList } from './chat/ChatMessageList';
+import { GenerationTimeline } from './chat/GenerationTimeline';
 import { useSwipeVariants } from './hooks/useSwipeVariants';
 import { useSceneContinue } from './hooks/useSceneContinue';
 import { useRetryStoryAI } from './hooks/useRetryStoryAI';
@@ -287,6 +288,8 @@ export function ChatArea() {
 
             <SelectionActionsMenu />
 
+            <div className="generation-workspace">
+            <div className="story-workspace">
             <ChatMessageList
                 scrollContainerRef={scrollContainerRef}
                 bottomRef={bottomRef}
@@ -309,6 +312,11 @@ export function ChatArea() {
                 onOpenSwipeSheet={setSwipeSheetMessageId}
                 onRetry={retry.retryStoryAI}
             />
+            <ChatNavFabs scrollContainerRef={scrollContainerRef} bottomRef={bottomRef} />
+            </div>
+
+            <GenerationTimeline />
+            </div>
 
             <ChatActionStrip
                 isStreaming={isStreaming}
@@ -383,8 +391,6 @@ export function ChatArea() {
             )}
 
             {betaUi && <BetaCommandPalette />}
-
-            <ChatNavFabs scrollContainerRef={scrollContainerRef} bottomRef={bottomRef} />
 
             <LootRollModal />
             <DiceRollModal />

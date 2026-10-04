@@ -1,7 +1,7 @@
 import { routeKnowledge, estimateLabel } from './routeKnowledge.js';
-import { cellVisibility, observedTerrainStore } from './exploration.js';
+import { observedTerrainStore } from './exploration.js';
 import { WORLD_PROFILES, worldProfile } from './worldProfiles.js';
-import { loadPixelArt, drawPixelSprite, paintPixelCell, paintPixelObjects, SITE_SPRITES } from './pixelArt.js';
+import { loadPixelArt, drawPixelSprite, paintPixelCell, paintPixelObjects, paintPixelRelief, paintPixelFog, SITE_SPRITES } from './pixelArt.js';
 import { siteLabel } from './discoveries.js';
 /**
  * World Map — the tiled canvas renderer.
@@ -858,6 +858,12 @@ function rasteriseTile(pyramid, level, tileX, tileY, snapshot) {
     if (!ctx) return canvas;
     for (let y = 0; y < count; y++) for (let x = 0; x < count; x++) {
         paintPixelCell(ctx, terrain, tileX * count + x, tileY * count + y, x * cellPixels, y * cellPixels, cellPixels);
+    }
+    const lighting = normaliseRenderSettings(snapshot.settings ?? {});
+    const shade = (ex, ey) => hillshadeMultiplier(ex, ey, 0.12, lighting.lightAzimuth, lighting.shadeStrength);
+    for (let y = 0; y < count; y++) for (let x = 0; x < count; x++) {
+        paintPixelRelief(ctx, terrain, tileX * count + x, tileY * count + y,
+            x * cellPixels, y * cellPixels, cellPixels, shade);
     }
     // One cell of overscan makes overhanging canopies seamless across cached tiles.
     for (let y = -1; y <= count; y++) for (let x = -1; x <= count; x++) {
@@ -1787,7 +1793,7 @@ export function mountMapRenderer(root, options) {
             const screen = cellCentreToScreen(site.x, site.y);
             ctx.save(); ctx.fillStyle = '#e4c785';
             const size = Math.max(28, Math.min(54, cell * 1.8));
-            if (!drawPixelSprite(ctx, SITE_SPRITES[site.type] ?? 14, screen.x - size / 2, screen.y - size * 0.7, size)) {
+            if (!drawPixelSprite(ctx, SITE_SPRITES[site.type] ?? 14, screen.x - size / 2, screen.y - size * 0.7, size, true)) {
                 ctx.beginPath(); ctx.arc(screen.x, screen.y, Math.max(2, cell / 6), 0, Math.PI * 2); ctx.fill();
             }
             if (layerState.labels && cell >= LABEL_MIN_CELL_PIXELS) {
@@ -1956,7 +1962,7 @@ export function mountMapRenderer(root, options) {
         // was inverted, so the per-cell grid only appeared when zoomed out and
         // was absent at every usable zoom.
         if (cell < GRID_FADE_BELOW_CELL_PIXELS) return;
-        const alpha = clamp((cell - GRID_FADE_BELOW_CELL_PIXELS) / 4, 0, 1) * 0.28;
+        const alpha = clamp((cell - GRID_FADE_BELOW_CELL_PIXELS) / 4, 0, 1) * 0.12;
         if (alpha <= 0.01) return;
         ctx.save();
         ctx.strokeStyle = readTokenOnce(root, '--color-border', 'rgba(220,220,220,0.55)');
@@ -2071,7 +2077,7 @@ export function mountMapRenderer(root, options) {
     function drawAnchorDot(anchor, screen, radius, fill, strokeColor) {
         const site = (getSnapshot()?.discoveries ?? []).find(row => row.id === anchor.locationId);
         const size = Math.max(32, Math.min(64, radius * 4.5));
-        if (site?.type !== 'wilderness' && drawPixelSprite(ctx, SITE_SPRITES[site?.type] ?? 13, screen.x - size / 2, screen.y - size * 0.7, size)) return;
+        if (site?.type !== 'wilderness' && drawPixelSprite(ctx, SITE_SPRITES[site?.type] ?? 13, screen.x - size / 2, screen.y - size * 0.7, size, true)) return;
         ctx.beginPath();
         ctx.arc(screen.x, screen.y, radius, 0, Math.PI * 2);
         ctx.fillStyle = fill;
@@ -2188,14 +2194,12 @@ export function mountMapRenderer(root, options) {
         canvas.dataset.worldmapExploredCount = String(snapshot.explored?.size ?? 0);
         if (!snapshot.generated) return;
         canvas.dataset.worldmapGeneratedCount = String(snapshot.generated.size);
+        const visible = snapshot.visible ?? new Set();
         const start = screenToCell(0, 0), end = screenToCell(width, height);
         for (let y = Math.floor(start.y); y <= Math.ceil(end.y); y++) for (let x = Math.floor(start.x); x <= Math.ceil(end.x); x++) {
-            const key = `${x},${y}`;
-            const state = cellVisibility(key, snapshot.generated, snapshot.visible ?? new Set());
-            if (state === 'visible' || (state === 'known' && !layerState.fog)) continue;
-            ctx.fillStyle = state === 'known' ? 'rgba(12, 23, 30, 0.48)' : '#17252d';
             const screen = cellToScreen(x, y);
-            ctx.fillRect(Math.floor(screen.x), Math.floor(screen.y), Math.ceil(cell) + 1, Math.ceil(cell) + 1);
+            paintPixelFog(ctx, snapshot.generated, visible, layerState.fog,
+                x, y, screen.x, screen.y, cell);
         }
     }
 

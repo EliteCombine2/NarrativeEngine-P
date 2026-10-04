@@ -176,6 +176,7 @@ export function MessageBubble({
             key={msg.id}
             data-ui="msg-row"
             data-role={msg.role}
+            data-editing={isEditing ? 'true' : undefined}
             data-last={isLastMessage ? 'true' : undefined}
             className={`group flex items-start gap-2 animate-[msg-in_0.2s_ease-out] ${isEditing ? 'w-full' : isUser ? 'justify-end' : 'justify-start'}`}
         >
@@ -219,7 +220,7 @@ export function MessageBubble({
                     </span>
                 </div>
 
-                <div className="gm-prose">
+                <div className="gm-prose journal-prose">
                     {isUser && !isEditing && (msg.attachmentUrl || attachmentCaption) && (
                         <PlayerAttachmentView url={msg.attachmentUrl} caption={attachmentCaption} />
                     )}

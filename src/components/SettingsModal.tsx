@@ -66,10 +66,13 @@ export function SettingsModal() {
           Viewport scaling is NOT applied here — ScreenLightbox owns it, on the
           wrapper directly above this one. Setting `zoom` again at this level
           would multiply against the parent's. */}
-      <div data-ui="settings" className="flex flex-col flex-1 min-h-0">
+      {/* Form pages must grow with their content so the sticky tab bar remains
+          inside its parent throughout scrolling. Extensions owns a bounded
+          workspace with its own scrolling, so it retains the minimum-height reset. */}
+      <div data-ui="settings" className={`flex flex-col flex-1 ${activeTab === 'extensions' ? 'min-h-0' : 'shrink-0'}`}>
 
         {/* Tabs */}
-        <div data-ui="settings-tabs" className="flex overflow-x-auto border-b border-border sticky top-0 bg-void z-10">
+        <div data-ui="settings-tabs" className="flex shrink-0 overflow-x-auto border-b border-border sticky top-0 bg-void z-10">
           {TABS.map(({ key, labelKey }) => (
             <button
               key={key}

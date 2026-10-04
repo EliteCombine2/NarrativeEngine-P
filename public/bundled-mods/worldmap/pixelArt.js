@@ -20,13 +20,64 @@ export function loadPixelArt() {
     });
     return loading;
 }
-export function drawPixelSprite(ctx, slot, x, y, size) {
+export function drawPixelSprite(ctx, slot, x, y, size, shadow = false) {
     if (!sheet) return false;
+    if (shadow) paintPixelShadow(ctx, x, y, size);
     const unitX = sheet.naturalWidth / 4, unitY = sheet.naturalHeight / 4;
     ctx.imageSmoothingEnabled = false;
     ctx.drawImage(sheet, (slot % 4) * unitX, Math.floor(slot / 4) * unitY, unitX, unitY,
         Math.round(x), Math.round(y), Math.round(size), Math.round(size));
     return true;
+}
+/** Small stepped contact shadow, cast toward the lower right by north-west light. */
+export function paintPixelShadow(ctx, x, y, size) {
+    const bands = [[0.20, 0.66, 0.64, 0.16, 0.06], [0.25, 0.69, 0.54, 0.10, 0.10], [0.32, 0.71, 0.40, 0.06, 0.13]];
+    for (const [dx, dy, w, h, alpha] of bands) {
+        ctx.fillStyle = `rgba(22,31,39,${alpha})`;
+        ctx.fillRect(x + dx * size, y + dy * size, w * size, h * size);
+    }
+}
+
+/** Shared vertex normals give adjacent cells identical lighting along their edges. */
+export function paintPixelRelief(ctx, store, x, y, px, py, size, shade) {
+    const cell = store.getCell(x, y);
+    if (!cell || cell.biome === 'ocean' || !Number.isFinite(cell.elevation)) return;
+    const heights = [];
+    for (let dy = -1; dy <= 1; dy++) for (let dx = -1; dx <= 1; dx++) {
+        const value = store.getCell(x + dx, y + dy)?.elevation;
+        heights.push(Number.isFinite(value) ? value : cell.elevation);
+    }
+    const flat = shade(0, 0);
+    const corners = [[0,1,3,4],[1,2,4,5],[3,4,6,7],[4,5,7,8]].map(([a,b,c,d]) => {
+        const ex = (heights[b] + heights[d] - heights[a] - heights[c]) / 2;
+        const ey = (heights[c] + heights[d] - heights[a] - heights[b]) / 2;
+        return shade(ex, ey) / flat;
+    });
+    const samples = Math.min(8, Math.max(1, Math.round(size / 4)));
+    const step = size / samples;
+    for (let j = 0; j < samples; j++) for (let i = 0; i < samples; i++) {
+        const u = (i + 0.5) / samples, v = (j + 0.5) / samples;
+        const value = (corners[0] * (1-u) + corners[1] * u) * (1-v)
+            + (corners[2] * (1-u) + corners[3] * u) * v;
+        const alpha = Math.min(0.28, Math.abs(value - 1));
+        if (alpha < 0.002) continue;
+        ctx.fillStyle = value < 1 ? `rgba(23,31,47,${alpha.toFixed(3)})` : `rgba(255,240,197,${alpha.toFixed(3)})`;
+        ctx.fillRect(px + i * step, py + j * step, step, step);
+    }
+    // Short broken rock faces mark a substantial downhill drop, never a new obstacle.
+    if (size < 16) return;
+    for (const [dx,dy,index] of [[1,0,5],[0,1,7]]) {
+        const neighbour = store.getCell(x + dx, y + dy);
+        if (!neighbour || neighbour.biome === 'ocean' || cell.elevation - heights[index] < 0.08) continue;
+        for (let i = 0; i < 3; i++) {
+            const jitter = noise(x, y, 109 + i) % 2;
+            const a = dx ? 13 + jitter : 2 + i * 4, b = dy ? 13 + jitter : 2 + i * 4;
+            ctx.fillStyle = 'rgba(35,36,40,0.22)';
+            ctx.fillRect(px + a * size / 16, py + b * size / 16, (dx ? 1 : 3) * size / 16, (dy ? 1 : 3) * size / 16);
+            ctx.fillStyle = 'rgba(245,225,180,0.16)';
+            ctx.fillRect(px + (a - dx) * size / 16, py + (b - dy) * size / 16, (dx ? 1 : 3) * size / 16, (dy ? 1 : 3) * size / 16);
+        }
+    }
 }
 function noise(x, y, salt = 0) {
     let n = Math.imul(x + 1013, 374761393) ^ Math.imul(y + 719, 668265263) ^ Math.imul(salt + 1, 1274126177);
@@ -44,56 +95,161 @@ export function terrainSprite(biome, variant) {
     if (biome === 'plains') return variant % 11 === 0 ? 9 : null;
     return null;
 }
+// Four authored motifs per terrain family, with placement independent of camera/cache.
+export const TERRAIN_VARIANTS = Object.freeze(['A', 'B', 'C', 'D']);
+export function terrainVariant(x, y) {
+    return noise(x, y, 47) % TERRAIN_VARIANTS.length;
+}
+
+/** Paint a reusable 16x16 terrain sprite. Edges retain the biome's base colour. */
+export function paintTerrainVariant(ctx, biome, variant, px, py, size) {
+    const v = ((variant % 4) + 4) % 4, pixel = size / 16;
+    const mark = (color, x, y, w = 1, h = 1) => {
+        ctx.fillStyle = color;
+        ctx.fillRect(px + x * pixel, py + y * pixel, w * pixel, h * pixel);
+    };
+    ctx.imageSmoothingEnabled = false;
+    ctx.fillStyle = PIXEL_PALETTE[biome] ?? PIXEL_PALETTE.plains;
+    ctx.fillRect(px, py, size, size);
+    const spots = [[3, 4], [10, 10], [4, 11], [11, 4]];
+    const tuft = (x, y, dark, light) => {
+        mark(dark, x, y, 3, 1); mark(dark, x, y - 2, 1, 2);
+        mark(light, x + 1, y - 3, 1, 3); mark(dark, x + 2, y - 1);
+    };
+    const stone = (x, y, dark, light) => {
+        mark(dark, x, y + 1, 4, 1); mark(dark, x + 1, y, 3, 1);
+        mark(light, x + 1, y, 2, 1);
+    };
+    for (let i = 0; i < 2 + (v === 1 ? 1 : 0); i++) {
+        const [x, y] = spots[(i + v) % spots.length];
+        if (biome === 'ocean') {
+            mark('#4f9ec9', x - 1, y, 4, 1);
+            mark('#72b9d6', x, y + 1, v === 2 ? 3 : 2, 1);
+            if (v === 3) mark('#286e9c', x + 1, y + 3, 3, 1);
+        } else if (['sand', 'desert'].includes(biome)) {
+            if (v === 2) stone(x, y, '#c39b61', '#f9e4ae');
+            else {
+                mark('#d2b274', x - 1, y + 1, 5, 1);
+                mark('#f9e4ae', x, y, v === 1 ? 4 : 2, 1);
+                if (v === 3) mark('#c39b61', x + 2, y + 3);
+            }
+        } else if (['snow', 'glacier', 'tundra'].includes(biome)) {
+            if (v === 3 && biome === 'tundra') tuft(x, y, '#879e80', '#d4dfb7');
+            else if (v === 2) stone(x, y, '#96b4c3', '#f7fcfa');
+            else {
+                mark('#b7cedd', x - 1, y + 1, 4, 1);
+                mark('#f7fcfa', x, y, 3, 1);
+                if (v === 1) mark('#a3c3d1', x + 1, y + 2, 1, 2);
+            }
+        } else if (['swamp', 'marsh'].includes(biome)) {
+            if (v === 1 || v === 3) tuft(x, y, '#304f59', '#a2b773');
+            else {
+                mark('#365962', x - 1, y, 5, 2);
+                mark('#669183', x, y, 3, 1);
+                if (v === 2) mark('#a2b773', x + 1, y - 1, 2, 1);
+            }
+        } else if (biome === 'farmland') {
+            const vertical = v % 2 === 1;
+            for (let row = 2; row < 14; row += 4) {
+                mark('#8b9f4e', vertical ? row : 1, vertical ? 1 : row, vertical ? 1 : 14, vertical ? 14 : 1);
+                if (v < 2) mark('#c2cf77', vertical ? row + 1 : 1, vertical ? 1 : row + 1, vertical ? 1 : 14, vertical ? 14 : 1);
+                else for (let col = 3; col < 14; col += 3) mark('#d4d58a', vertical ? row + 1 : col, vertical ? col : row + 1);
+            }
+            break;
+        } else if (['mountain', 'volcanic', 'deadzone'].includes(biome)) {
+            const dark = biome === 'volcanic' ? '#403d49' : biome === 'deadzone' ? '#6e666e' : '#858b73';
+            const light = biome === 'volcanic' ? '#aa8074' : biome === 'deadzone' ? '#c0ada7' : '#d0d0ab';
+            if (v === 1 || v === 3) {
+                mark(dark, x, y - 1, 1, 3); mark(dark, x + 1, y + 1, 3, 1);
+                mark(light, x + 1, y - 1, 2, 1);
+            } else stone(x, y, dark, light);
+        } else {
+            const dry = biome === 'savanna';
+            const dark = dry ? '#a49e54' : '#60954d', light = dry ? '#e5d68b' : '#b4d984';
+            if (v === 0 || v === 1) tuft(x, y, dark, light);
+            else if (v === 2) {
+                tuft(x, y, dark, light);
+                mark(dry ? '#f6e8b2' : '#f1e6a6', x + 1, y - 3);
+                mark(dry ? '#d4a562' : '#dfb4cc', x + 2, y - 2);
+            } else {
+                stone(x, y, dry ? '#9e9b70' : '#819879', dry ? '#ded2a0' : '#c2cead');
+                mark(dark, x - 1, y + 2);
+            }
+        }
+    }
+}
+const EDGE_OFFSETS = [[0,-1],[1,0],[0,1],[-1,0],[-1,-1],[1,-1],[1,1],[-1,1]];
+const rgb = color => [1, 3, 5].map(i => parseInt(color.slice(i, i + 2), 16));
+const smooth = value => { const t = Math.max(0, Math.min(1, value)); return t * t * (3 - 2 * t); };
+function edgeWeight(u, v, dx, dy) {
+    const wx = dx === 0 ? 1 : smooth((0.36 - (dx < 0 ? u : 1 - u)) / 0.36);
+    const wy = dy === 0 ? 1 : smooth((0.36 - (dy < 0 ? v : 1 - v)) / 0.36);
+    return wx * wy;
+}
+
+// Blend only observed neighbours. Missing cells never reveal or generate terrain.
+function paintTerrainEdges(ctx, biome, neighbours, px, py, size) {
+    const base = rgb(PIXEL_PALETTE[biome] ?? PIXEL_PALETTE.plains);
+    const edges = neighbours.map((cell, i) => {
+        if (!cell || cell.biome === biome || cell.biome === 'ocean' || biome === 'ocean') return null;
+        return { offset: EDGE_OFFSETS[i], color: rgb(PIXEL_PALETTE[cell.biome] ?? PIXEL_PALETTE.plains) };
+    }).filter(Boolean);
+    if (!edges.length) return;
+    const step = size / 8;
+    for (let j = 0; j < 8; j++) for (let i = 0; i < 8; i++) {
+        const sum = [0, 0, 0]; let weight = 0;
+        for (const edge of edges) {
+            const w = edgeWeight((i + 0.5) / 8, (j + 0.5) / 8, ...edge.offset);
+            weight += w; for (let c = 0; c < 3; c++) sum[c] += edge.color[c] * w;
+        }
+        if (!weight) continue;
+        const alpha = Math.min(0.72, weight * 0.5);
+        const color = base.map((c, k) => Math.round(c * (1 - alpha) + sum[k] / weight * alpha));
+        ctx.fillStyle = `rgb(${color.join(',')})`;
+        ctx.fillRect(px + i * step, py + j * step, step, step);
+    }
+}
+
+/** Fade fog inward over known terrain; unexplored cells always stay fully opaque. */
+export function paintPixelFog(ctx, generated, visible, fog, x, y, px, py, size) {
+    const opacity = (cx, cy) => !generated.has(`${cx},${cy}`) ? 1 : visible.has(`${cx},${cy}`) || !fog ? 0 : 0.48;
+    const base = opacity(x, y);
+    const edges = EDGE_OFFSETS.slice(0, 4).map(([dx, dy]) => opacity(x + dx, y + dy));
+    if (base === 1 || edges.every(alpha => alpha <= base)) {
+        if (!base) return;
+        ctx.fillStyle = base === 1 ? '#17252d' : `rgba(23,37,45,${base})`;
+        ctx.fillRect(px, py, size, size); return;
+    }
+    const step = size / 8;
+    for (let j = 0; j < 8; j++) for (let i = 0; i < 8; i++) {
+        let alpha = base;
+        for (let side = 0; side < 4; side++) {
+            alpha = Math.max(alpha, base + (edges[side] - base) * edgeWeight((i + 0.5) / 8, (j + 0.5) / 8, ...EDGE_OFFSETS[side]));
+        }
+        if (!alpha) continue;
+        ctx.fillStyle = `rgba(23,37,45,${alpha.toFixed(3)})`;
+        ctx.fillRect(px + i * step, py + j * step, step, step);
+    }
+}
 // Logical 16-pixel ground tiles at every zoom; motifs stay stable across tile/cache boundaries.
 export function paintPixelCell(ctx, store, x, y, px, py, size) {
     const cell = store.getCell(x, y);
     if (!cell) return;
     const biome = cell.biome, pixel = size / 16;
-    ctx.imageSmoothingEnabled = false;
-    ctx.fillStyle = PIXEL_PALETTE[biome] ?? PIXEL_PALETTE.plains;
-    ctx.fillRect(px, py, size, size);
+    // Crop orientation belongs to a field, rather than changing at every cell.
+    const variant = biome === 'farmland' ? terrainVariant(Math.floor(x / 6), Math.floor(y / 6)) : terrainVariant(x, y);
+    if (biome !== 'farmland' && biome !== 'ocean' && noise(x, y, 83) % 5 < 2) {
+        ctx.fillStyle = PIXEL_PALETTE[biome] ?? PIXEL_PALETTE.plains;
+        ctx.fillRect(px, py, size, size);
+    } else paintTerrainVariant(ctx, biome, variant, px, py, size);
+    const surrounding = EDGE_OFFSETS.map(([dx, dy]) => store.getCell(x + dx, y + dy));
+    paintTerrainEdges(ctx, biome, surrounding, px, py, size);
     const mark = (color, a, b, w, h) => {
         ctx.fillStyle = color;
         ctx.fillRect(px + a * pixel, py + b * pixel, Math.max(pixel, w * pixel), Math.max(pixel, h * pixel));
     };
-    if (biome === 'ocean') {
-        for (let i = 0; i < 3; i++) {
-            const n = noise(x, y, i), a = n % 12, b = (n >>> 8) % 14;
-            mark('#4f9ec9', a, b, 3, 1); mark('#72b9d6', a + 1, b + 1, 2, 1);
-        }
-    } else if (['snow', 'volcanic', 'deadzone', 'sand', 'swamp'].includes(biome)) {
-        for (let i = 0; i < 3; i++) {
-            const n = noise(x, y, i), a = 1 + n % 10, b = 2 + (n >>> 8) % 10;
-            if (biome === 'snow') {
-                mark('#b7cedd', a, b + 1, 5, 1); mark('#f7fcfa', a + 1, b, 4, 1);
-            } else if (biome === 'sand') {
-                mark('#c39b61', a, b + 1, 5, 1); mark('#f9e4ae', a + 1, b, 4, 1);
-            } else if (biome === 'volcanic') {
-                mark('#403d49', a, b, 1, 4); mark('#453b44', a + 1, b + 3, 3, 1);
-                mark('#aa8074', a + 1, b, 2, 1);
-            } else if (biome === 'deadzone') {
-                mark('#6e666e', a, b, 4, 1); mark('#6e666e', a + 2, b + 1, 1, 3);
-                mark('#c0ada7', a, b - 1, 3, 1);
-            } else {
-                mark('#304f59', a, b, 5, 3); mark('#669183', a + 1, b, 3, 1);
-                mark('#87a56a', a + 4, b - 1, 1, 3);
-            }
-        }
-    } else if (biome === 'farmland') {
-        for (let row = 3; row < 16; row += 4) {
-            mark('#8b9f4e', 0, row, 16, 1); mark('#c2cf77', 0, row + 1, 16, 1);
-        }
-    } else {
-        const dark = ['desert','savanna'].includes(biome) ? '#b7ac65' : biome === 'glacier' ? '#b8d2d5' : '#6a9f56';
-        const light = ['desert','savanna'].includes(biome) ? '#ede09c' : biome === 'glacier' ? '#eff7ec' : '#a8cb77';
-        for (let i = 0; i < 3; i++) {
-            const n = noise(x, y, i), a = n % 14, b = (n >>> 8) % 14;
-            mark(i === 0 ? light : dark, a, b, 1, 1);
-            if (i === 1) mark(dark, a + 1, b - 1, 1, 1);
-        }
-    }
     // Cardinal shoreline strips join at corners. Land always retains its own biome.
-    const neighbours = [[0,-1],[1,0],[0,1],[-1,0]].map(([dx,dy]) => store.getCell(x+dx,y+dy));
+    const neighbours = surrounding.slice(0, 4);
     if (biome !== 'ocean') {
         neighbours.forEach((other, side) => {
             if (other?.biome !== 'ocean') return;
@@ -115,6 +271,7 @@ export function paintPixelObjects(ctx, store, x, y, px, py, size) {
     if (['snow', 'volcanic', 'deadzone'].includes(biome)) {
         // Small original pixel silhouettes, stable in world coordinates.
         if (seed % 4 !== 0) return;
+        paintPixelShadow(ctx, px, py, size);
         const pixel = size / 16;
         const mark = (color, a, b, w, h) => { ctx.fillStyle = color; ctx.fillRect(px + a * pixel, py + b * pixel, w * pixel, h * pixel); };
         if (biome === 'deadzone') {
@@ -130,7 +287,7 @@ export function paintPixelObjects(ctx, store, x, y, px, py, size) {
     const dense = ['forest', 'jungle', 'taiga', 'mountain'].includes(biome);
     const scale = dense ? 1.6 : 1;
     const offset = dense ? ((seed % 3) - 1) * size / 16 : 0;
-    if (!drawPixelSprite(ctx, sprite, px - size * (scale - 1) / 2 + offset, py - size * (scale - 1) * 0.7, size * scale)) {
+    if (!drawPixelSprite(ctx, sprite, px - size * (scale - 1) / 2 + offset, py - size * (scale - 1) * 0.7, size * scale, dense || sprite !== 9)) {
         ctx.fillStyle = '#49774d'; ctx.fillRect(px + size / 4, py + size / 4, size / 2, size / 2);
     }
 }
