@@ -235,7 +235,7 @@ export const en = {
     'tierblock.introEngine.name': 'Character Intro Engine',
     'tierblock.introEngine.description': 'Rolls a one-line introduction tag for newly mentioned NPCs before the GM writes the reply.',
     'tierblock.planner.name': 'Archive Planner',
-    'tierblock.planner.description': 'Asks a utility model which past scenes to recall before the main turn runs.',
+    'tierblock.planner.description': 'Asks a utility model which past scenes to recall before the main turn runs. Off by default: on the Turn Prep memory probes its picks never changed which scenes reached the writer, and it reads ~21k tokens a turn.',
     'tierblock.expandQuery.name': 'Query Expansion',
     'tierblock.expandQuery.description': 'Expands short user messages into richer retrieval queries for semantic archive search.',
     'tierblock.reranker.name': 'Semantic Reranker',

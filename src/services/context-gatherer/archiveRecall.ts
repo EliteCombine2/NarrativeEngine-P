@@ -4,7 +4,6 @@ import { retrieveArchiveMemory, fetchArchiveScenes } from '../archiveMemory';
 import { rankChapters, selectArchiveSceneIdsWithChapterFunnel } from '../archive-memory/archiveChapterEngine';
 import { runArchivePlanner } from '../archive-memory/archivePlanner';
 import { getDivergenceSceneIds, EMPTY_REGISTER, buildSceneMap } from '../campaign-state/divergenceRegister';
-import { tierAllows } from '../turn/aiTier';
 import { isBlockEnabled } from '../turn/blockEnablement';
 import type { SemanticCandidates } from './semanticCandidates';
 import { hasHostModelRole, type HostFacade } from '../turn/hostFacade';
@@ -163,7 +162,10 @@ export async function gatherPlannerSceneIds(
     const plannerEndpoint = facade ? undefined : state.getUtilityEndpoint?.();
     const plannerEnabled = facade?.config.enableArchivePlanner ?? state.settings.enableArchivePlanner;
     const plannerAvailable = facade ? hasHostModelRole(facade, 'utility') : Boolean(plannerEndpoint?.endpoint);
-    if (tierAllows(facade?.config.aiTier ?? state.settings.aiTier, 'planner') && plannerEnabled && plannerAvailable) {
+    // Off in every preset (its picks never changed recall on the Turn Prep probes); read
+    // through the block switch so a user who turns it back on in Block View gets it.
+    const plannerBlockOn = isBlockEnabled('planner', facade?.config.aiTier ?? state.settings.aiTier, state.settings.moduleEnabled);
+    if (plannerBlockOn && plannerEnabled && plannerAvailable) {
         try {
             return await runArchivePlanner(
                 plannerEndpoint,

@@ -3,6 +3,7 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 const mocks = vi.hoisted(() => ({
     retrieveArchiveMemory: vi.fn(),
     selectArchiveSceneIdsWithChapterFunnel: vi.fn(),
+    runArchivePlanner: vi.fn(),
 }));
 vi.mock('../../archiveMemory', () => ({
     retrieveArchiveMemory: mocks.retrieveArchiveMemory,
@@ -12,8 +13,12 @@ vi.mock('../../archive-memory/archiveChapterEngine', () => ({
     rankChapters: vi.fn(() => []),
     selectArchiveSceneIdsWithChapterFunnel: mocks.selectArchiveSceneIdsWithChapterFunnel,
 }));
+vi.mock('../../archive-memory/archivePlanner', () => ({
+    runArchivePlanner: mocks.runArchivePlanner,
+}));
 
-import { selectMemoryRecallIds, type MemoryRecallInput, type MemoryRecallCoreContext } from '../archiveRecall';
+import { gatherPlannerSceneIds, selectMemoryRecallIds, type MemoryRecallInput, type MemoryRecallCoreContext } from '../archiveRecall';
+import type { TurnState } from '../../turn/turnOrchestrator';
 import type { ArchiveChapter } from '../../../types';
 
 const sealedChapter = { chapterId: 'CH01', sealedAt: 1, summary: 'A chapter.', sceneRange: ['001', '025'], sceneIds: [] } as unknown as ArchiveChapter;
@@ -44,6 +49,7 @@ const context = (moduleEnabled?: Record<string, boolean>): MemoryRecallCoreConte
 beforeEach(() => {
     mocks.retrieveArchiveMemory.mockReset().mockReturnValue(['534', '533']);
     mocks.selectArchiveSceneIdsWithChapterFunnel.mockReset().mockResolvedValue(['209', '217']);
+    mocks.runArchivePlanner.mockReset().mockResolvedValue(['533']);
 });
 
 describe('selectMemoryRecallIds — the chapter funnel block', () => {
@@ -66,5 +72,24 @@ describe('selectMemoryRecallIds — the chapter funnel block', () => {
         const ids = await selectMemoryRecallIds(input, context({ archiveFunnel: true }));
         expect(mocks.selectArchiveSceneIdsWithChapterFunnel).toHaveBeenCalled();
         expect(ids).toEqual(['209', '217']);
+    });
+});
+
+describe('gatherPlannerSceneIds — the Archive Planner block', () => {
+    const plannerState = (moduleEnabled?: Record<string, boolean>) => ({
+        input: 'Therese is going to want what we promised her.',
+        archiveIndex: [{ sceneId: '001' }],
+        settings: { aiTier: 'max', enableArchivePlanner: true, moduleEnabled },
+        getUtilityEndpoint: () => ({ endpoint: 'http://utility.test/v1', modelName: 'm' }),
+    }) as unknown as TurnState;
+
+    it('is off on Max by default', async () => {
+        expect(await gatherPlannerSceneIds(plannerState())).toBeUndefined();
+        expect(mocks.runArchivePlanner).not.toHaveBeenCalled();
+    });
+
+    it('a Block View toggle turns it back on', async () => {
+        expect(await gatherPlannerSceneIds(plannerState({ planner: true }))).toEqual(['533']);
+        expect(mocks.runArchivePlanner).toHaveBeenCalled();
     });
 });

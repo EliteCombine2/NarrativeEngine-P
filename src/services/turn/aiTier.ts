@@ -54,7 +54,7 @@ export const MATRIX: Record<AiTier, Record<TierFeature, boolean>> = {
         lodSlottedRag: false,
     },
     pro: {
-        introEngine: false, planner: true, expandQuery: false, reranker: false, archiveFunnel: false,
+        introEngine: false, planner: false, expandQuery: false, reranker: false, archiveFunnel: false,
         deepScan: true, recommender: true, recommenderThinking: false, npcStance: true,
         importanceRating: false, witnessAux: false, npcValidate: true, npcProfileGen: true,
         npcUpdate: true, drivesBackfill: false, profileScan: false, inventoryScan: false, locationScan: false, locationEnrich: true, sealChapter: true,
@@ -66,7 +66,7 @@ export const MATRIX: Record<AiTier, Record<TierFeature, boolean>> = {
         lodSlottedRag: false,
     },
     max: {
-        introEngine: true, planner: true, expandQuery: true, reranker: true, archiveFunnel: false,
+        introEngine: true, planner: false, expandQuery: true, reranker: true, archiveFunnel: false,
         deepScan: true, recommender: true, recommenderThinking: false, npcStance: true,
         importanceRating: true, witnessAux: true, npcValidate: true, npcProfileGen: true,
         npcUpdate: true, drivesBackfill: true, profileScan: true, inventoryScan: true, locationScan: true, locationEnrich: true, sealChapter: true,
@@ -153,7 +153,7 @@ export interface TierBlock {
 
 const TIER_BLOCKS: readonly TierBlock[] = [
     { id: 'introEngine', name: 'Character Intro Engine', description: 'Rolls a one-line introduction tag for newly mentioned NPCs before the GM writes the reply.', toggleable: true, trigger: 'automatic', defaultEnabled: false, callsModel: true },
-    { id: 'planner', name: 'Archive Planner', description: 'Asks a utility model which past scenes to recall before the main turn runs.', toggleable: true, trigger: 'automatic', defaultEnabled: true, callsModel: true },
+    { id: 'planner', name: 'Archive Planner', description: 'Asks a utility model which past scenes to recall before the main turn runs. Off by default: on the Turn Prep memory probes its picks never changed which scenes reached the writer, and it reads ~21k tokens a turn.', toggleable: true, trigger: 'automatic', defaultEnabled: false, callsModel: true },
     { id: 'expandQuery', name: 'Query Expansion', description: 'Expands short user messages into richer retrieval queries for semantic archive search.', toggleable: true, trigger: 'automatic', defaultEnabled: false, callsModel: true },
     { id: 'reranker', name: 'Semantic Reranker', description: 'Re-ranks archive search results with a utility model after the first-pass retrieval.', toggleable: true, trigger: 'automatic', defaultEnabled: false, callsModel: true },
     { id: 'archiveFunnel', name: 'Chapter Recall Funnel', description: 'Narrows scene recall to the chapters a utility model confirms, then matches keywords inside them. Off by default: archive-wide search found the right scenes where the funnel locked onto the wrong chapter, and the funnel ignores meaning search and the Archive Planner.', toggleable: true, trigger: 'automatic', defaultEnabled: false, callsModel: true },
