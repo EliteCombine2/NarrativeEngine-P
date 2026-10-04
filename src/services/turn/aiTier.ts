@@ -66,7 +66,7 @@ export const MATRIX: Record<AiTier, Record<TierFeature, boolean>> = {
         lodSlottedRag: false,
     },
     max: {
-        introEngine: true, planner: false, expandQuery: true, reranker: true, archiveFunnel: false,
+        introEngine: true, planner: false, expandQuery: false, reranker: true, archiveFunnel: false,
         deepScan: true, recommender: true, recommenderThinking: false, npcStance: true,
         importanceRating: true, witnessAux: true, npcValidate: true, npcProfileGen: true,
         npcUpdate: true, drivesBackfill: true, profileScan: true, inventoryScan: true, locationScan: true, locationEnrich: true, sealChapter: true,
@@ -154,7 +154,7 @@ export interface TierBlock {
 const TIER_BLOCKS: readonly TierBlock[] = [
     { id: 'introEngine', name: 'Character Intro Engine', description: 'Rolls a one-line introduction tag for newly mentioned NPCs before the GM writes the reply.', toggleable: true, trigger: 'automatic', defaultEnabled: false, callsModel: true },
     { id: 'planner', name: 'Archive Planner', description: 'Asks a utility model which past scenes to recall before the main turn runs. Off by default: on the Turn Prep memory probes its picks never changed which scenes reached the writer, and it reads ~21k tokens a turn.', toggleable: true, trigger: 'automatic', defaultEnabled: false, callsModel: true },
-    { id: 'expandQuery', name: 'Query Expansion', description: 'Expands short user messages into richer retrieval queries for semantic archive search.', toggleable: true, trigger: 'automatic', defaultEnabled: false, callsModel: true },
+    { id: 'expandQuery', name: 'Query Expansion', description: "Rewrites short or \"remember when…\" messages into extra memory searches, using the last exchange. Off by default: on short versions of the Turn Prep memory probes it found fewer of the right scenes on its own (3.5 vs 7 of the targets in the top 6); with the Semantic Reranker also on it scored best (9).", toggleable: true, trigger: 'automatic', defaultEnabled: false, callsModel: true },
     { id: 'reranker', name: 'Semantic Reranker', description: 'Re-ranks archive search results with a utility model after the first-pass retrieval.', toggleable: true, trigger: 'automatic', defaultEnabled: false, callsModel: true },
     { id: 'archiveFunnel', name: 'Chapter Recall Funnel', description: 'Narrows scene recall to the chapters a utility model confirms, then matches keywords inside them. Off by default: archive-wide search found the right scenes where the funnel locked onto the wrong chapter, and the funnel ignores meaning search and the Archive Planner.', toggleable: true, trigger: 'automatic', defaultEnabled: false, callsModel: true },
     { id: 'deepScan', name: 'Deep Archive Search', description: 'Runs a two-round LLM deep scan across sealed chapters when standard recall is not enough.', toggleable: true, trigger: 'automatic', defaultEnabled: true, callsModel: true },

@@ -81,7 +81,7 @@ describe('gatherSemanticCandidates — reranker', () => {
 
 describe('gatherSemanticCandidates — query expansion', () => {
     it('expands a short message with thinking off', async () => {
-        const { state, facade, modelCall } = setup('ask her about it');
+        const { state, facade, modelCall } = setup('ask her about it', { expandQuery: true });
         await gatherSemanticCandidates(state, undefined, facade);
 
         const request = modelCall.mock.calls.find(([, r]) => r.trackingLabel === 'query-expansion')?.[1];

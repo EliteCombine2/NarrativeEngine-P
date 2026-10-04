@@ -38,7 +38,7 @@
 import type { ArchiveChapter, ArchiveIndexEntry, NPCEntry } from '../../types';
 import type { TurnState } from '../turn/turnOrchestrator';
 import type { HostFacade } from '../turn/hostFacade';
-import { tierAllows } from '../turn/aiTier';
+import { isBlockEnabled } from '../turn/blockEnablement';
 import { createWitnessResolver } from '../npc/witnessResolve';
 
 export type SlottedRagSnippet = {
@@ -220,7 +220,7 @@ export function gatherSlottedRag(
     },
     facade?: HostFacade,
 ): SlottedRagResult {
-    if (!tierAllows(facade?.config.aiTier ?? state.settings.aiTier, 'lodSlottedRag')) return { snippets: [] };
+    if (!isBlockEnabled('lodSlottedRag', facade?.config.aiTier ?? state.settings.aiTier, facade?.config.moduleEnabled ?? state.settings.moduleEnabled)) return { snippets: [] };
 
     const archiveIndex = facade?.data.archiveIndex ?? state.archiveIndex;
     const npcLedger = facade?.data.npcLedger ?? state.npcLedger;

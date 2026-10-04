@@ -4,7 +4,7 @@ import type { SealModelCall } from '../../../saveFileEngine';
 import { backgroundQueue } from '../../../infrastructure/backgroundQueue';
 import { toast } from '../../../../components/Toast';
 import { EMPTY_REGISTER } from '../../../campaign-state/divergenceRegister';
-import { tierAllows } from '../../aiTier';
+import { isBlockEnabled } from '../../blockEnablement';
 import { hasHostModelRole } from '../../hostFacade';
 import { emitCoreEvent } from '../../../mods/events';
 import { runCombinedSeal } from '../../postTurnPipeline';
@@ -69,7 +69,7 @@ export const chapterSealTrack: PostTurnTrack<PostCommitTrackContext> = {
             const sealModelCall: SealModelCall | undefined = ctx.facade && hasHostModelRole(ctx.facade, 'story')
                 ? (request) => ctx.facade!.model.call('story', request).then(result => result.content)
                 : undefined;
-            if ((sealProvider || sealModelCall) && tierAllows(ctx.facade?.config.aiTier ?? ctx.state.settings.aiTier, 'sealChapter')) {
+            if ((sealProvider || sealModelCall) && isBlockEnabled('sealChapter', ctx.facade?.config.aiTier ?? ctx.state.settings.aiTier, ctx.facade?.config.moduleEnabled ?? ctx.state.settings.moduleEnabled)) {
                 await runCombinedSeal(
                     sealProvider,
                     sealResult.sealedChapter,

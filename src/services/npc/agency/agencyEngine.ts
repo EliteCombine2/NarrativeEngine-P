@@ -31,16 +31,8 @@ import { detectCollision, resolveTangle, buildTangleDeltas } from './agencyColli
 import { buildDigest, visibilityFromBand, type TickDelta } from './agencyDigest';
 import { detectTimeskip, runTimeskip } from './agencyTimeskipRun';
 import { isAgencyEligible } from './agencyLifecycle';
+import { isBlockEnabled } from '../../turn/blockEnablement';
 
-// Redundant inner guard — the caller in postTurnPipeline.ts already gates this on the
-// real `tierAllows` before the call. On lite this function is never entered (a no-op when
-// no NPCs have goalRecords, which is all legacy NPCs until populateAgencyFields fills wants).
-// Kept as a stub (returns true) because removing it is a behaviour change (WORKORDER-P5-01 §3).
-function tierAllows(tier: unknown, feature: string): boolean {
-    void tier;
-    void feature;
-    return true;
-}
 
 // Inlined from mobile's services/infrastructure/utilityPrompts (desktop has no equivalent).
 const TTRPG_PERSONA_GM_ASSISTANT = 'You are a background GM assistant running silently.';
@@ -64,6 +56,7 @@ export function runAgencyTick(
         : callbacks;
     const context = facade?.data.context ?? state.context;
     const aiTier = facade?.config.aiTier ?? state.settings.aiTier;
+    const moduleEnabled = facade?.config.moduleEnabled ?? state.settings.moduleEnabled;
     const sceneStakes: SceneStakes = context.lastSceneStakes ?? 'calm';
     const currentTick = context.agencyTick ?? 0;
     const currentDc = context.agencyHeartbeatDC ?? HEARTBEAT_DC.initial;
@@ -71,14 +64,14 @@ export function runAgencyTick(
     // ── Timeskip detection (§9.7 Piece D, +1 LLM) ──
     const timeskipResult = detectTimeskip(displayInput);
     if (timeskipResult && !('ambiguous' in timeskipResult) && timeskipResult.weeks > 0) {
-        if (tierAllows(aiTier, 'timeskipRun')) {
+        if (isBlockEnabled('timeskipRun', aiTier, moduleEnabled)) {
             runTimeskipPath(state, callbacks, npcLedger, timeskipResult.weeks, currentTick, sceneStakes, facade);
             return;
         }
     }
 
     // ── Heartbeat trickle (§5/§9.3#1, +0 LLM) ──
-    if (!tierAllows(aiTier, 'heartbeatTick')) return;
+    if (!isBlockEnabled('heartbeatTick', aiTier, moduleEnabled)) return;
 
     const heartbeat = rollHeartbeat({ dc: currentDc });
     writeCallbacks.updateContext({ agencyHeartbeatDC: heartbeat.nextDc });

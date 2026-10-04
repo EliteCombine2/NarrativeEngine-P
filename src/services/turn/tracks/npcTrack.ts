@@ -2,7 +2,8 @@ import { useAppStore } from '../../../store/useAppStore';
 import { backgroundQueue } from '../../infrastructure/backgroundQueue';
 import { extractNPCNames, classifyNPCNames, validateNPCCandidates } from '../../npc/npcDetector';
 import { updateExistingNPCs, backfillNPCDrives } from '../../chatEngine';
-import { tierAllows, NPC_UPDATE_COOLDOWN } from '../aiTier';
+import { NPC_UPDATE_COOLDOWN } from '../aiTier';
+import { isBlockEnabled } from '../blockEnablement';
 import { buildHostFacade, type HostFacade } from '../hostFacade';
 import type { JsonModelCall } from '../../npc-generation/shared';
 import { AI_CALL_TIMEOUT_MS } from '../../llm/timeouts';
@@ -56,7 +57,7 @@ async function runNPCTrack(ctx: PostTurnTrackContext): Promise<void> {
     const extractedNames = extractNPCNames(lastAssistantContent, excludeNames);
     if (extractedNames.length === 0) return;
 
-    const validatedNames = tierAllows(config.aiTier, 'npcValidate')
+    const validatedNames = isBlockEnabled('npcValidate', config.aiTier, config.moduleEnabled)
         ? useBroker
             ? await validateNPCCandidates(undefined, extractedNames, lastAssistantContent, async (request) => facade.model.call('story', request))
             : provider
@@ -82,7 +83,7 @@ async function runNPCTrack(ctx: PostTurnTrackContext): Promise<void> {
         write.addNpcSuggestions([potentialName], lastAssistantContent);
     }
 
-    if (existingNpcsToUpdate.length > 0 && tierAllows(config.aiTier, 'npcUpdate')) {
+    if (existingNpcsToUpdate.length > 0 && isBlockEnabled('npcUpdate', config.aiTier, config.moduleEnabled)) {
         const cooldown = NPC_UPDATE_COOLDOWN[config.aiTier ?? 'pro'];
         const archiveIndex = data.archiveIndex;
         const sceneNow = archiveIndex.length > 0
@@ -114,7 +115,7 @@ async function runNPCTrack(ctx: PostTurnTrackContext): Promise<void> {
             }
         }
 
-        if (tierAllows(config.aiTier, 'drivesBackfill')) {
+        if (isBlockEnabled('drivesBackfill', config.aiTier, config.moduleEnabled)) {
             const npcsNeedingDrives = existingNpcsToUpdate.filter(n => !n.drives);
             if (npcsNeedingDrives.length > 0) {
                 const backfillProvider = useBroker ? undefined : state?.getFreshProvider();

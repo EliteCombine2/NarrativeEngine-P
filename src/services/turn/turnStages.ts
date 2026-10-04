@@ -30,7 +30,6 @@ import { sanitizePayloadForApi } from '../lib/payloadSanitizer';
 import { getToolDefinitions } from './toolHandlers';
 import { resolveToolHandler } from './toolRegistry';
 import { gatherContext } from './contextGatherer';
-import { tierAllows } from './aiTier';
 import { extractAndStripSceneStakes } from './sceneStakesTag';
 import { capturePendingTurnSnapshot } from './pendingCommit';
 import { buildWatchdogDossier } from './directorWatchdog';
@@ -314,7 +313,7 @@ export async function runDirectorStage(
     // and issues a Writer Brief for the next turn. Runs after context gathering (so the
     // dossier + last assistant message are settled) and before buildPayload (so the Brief
     // can ride below the cache boundary in the final user message). Gated by
-    // tierAllows(tier, 'directorBrief') — lite never calls. Graceful on timeout/abort/
+    // isBlockEnabled('directorBrief', …) — lite never calls. Graceful on timeout/abort/
     // parse-failure/any error: runDirectorBrief returns null and the turn continues with
     // just the watchdog nudge (buildPayload suppresses the nudge only when a Brief string
     // is actually passed). Computed once per (campaignId, userMessage) — a swipe/regenerate
@@ -327,7 +326,7 @@ export async function runDirectorStage(
     // `runDirectorBrief` catches internally and returns null, so the turn proceeds. The
     // `onDirectorBriefPhase` callback toggles the UI's "Director drafting brief…" state.
     let directorBrief: string | null = null;
-    if (tierAllows(settings.aiTier, 'directorBrief')) {
+    if (isBlockEnabled('directorBrief', settings.aiTier, settings.moduleEnabled)) {
         const skipSignal = state.directorSkipController?.signal;
         const directorSignal = skipSignal
             ? AbortSignal.any([abortController.signal, skipSignal])

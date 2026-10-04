@@ -5,7 +5,7 @@ import type { OpenAIMessage } from '../llm/llmService';
 import type { PromptInterceptionResult } from '../mods/interceptors';
 import { runPostTurnPipeline } from './postTurnPipeline';
 import { classifySceneStakes } from './sceneStakesTag';
-import { tierAllows } from './aiTier';
+import { isBlockEnabled } from './blockEnablement';
 import { shouldCondense, computeTrimIndex, getCondenseBudgetRatio } from '../archive-memory/condenser';
 import { toast } from '../../components/Toast';
 import { useAppStore } from '../../store/useAppStore';
@@ -374,7 +374,7 @@ async function runCommitPendingTurn(): Promise<void> {
     if (!variant.tagPresent) {
         const utilityProvider = hasHostModelRole(facade, 'utility') ? undefined : commitState.getUtilityEndpoint?.();
         const aiTier = facade.config.aiTier;
-        if ((utilityProvider || hasHostModelRole(facade, 'utility')) && tierAllows(aiTier, 'sceneStakesClassify')) {
+        if ((utilityProvider || hasHostModelRole(facade, 'utility')) && isBlockEnabled('sceneStakesClassify', aiTier, facade.config.moduleEnabled)) {
             try {
                 const recentScene = (snapshot?.messages ?? messages).slice(-3).map(m => {
                     const role = m.role === 'assistant' ? 'GM' : m.role.toUpperCase();

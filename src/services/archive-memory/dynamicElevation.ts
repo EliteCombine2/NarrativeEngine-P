@@ -22,7 +22,7 @@ import type { HostFacade } from '../turn/hostFacade';
 import { API_BASE as API } from '../../lib/apiBase';
 import { fetchArchiveScenes } from '../archiveMemory';
 import { renderLodChapters, type LodConfig } from '../payload/lodRenderer';
-import { tierAllows } from '../turn/aiTier';
+import { isBlockEnabled } from '../turn/blockEnablement';
 
 export type ElevatedScene = ArchiveScene & {
     chapterId: string;
@@ -192,7 +192,7 @@ export async function gatherDynamicElevation(
     const config = facade?.config;
     const campaignId = data?.activeCampaignId ?? state.activeCampaignId;
     if (!campaignId) return empty;
-    if (!tierAllows(config?.aiTier ?? state.settings.aiTier, 'lodDynamicElevation')) return empty;
+    if (!isBlockEnabled('lodDynamicElevation', config?.aiTier ?? state.settings.aiTier, config?.moduleEnabled ?? state.settings.moduleEnabled)) return empty;
 
     const archiveIndex = data?.archiveIndex ?? state.archiveIndex;
     const condenser = data?.condenser ?? state.condenser;

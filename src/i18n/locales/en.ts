@@ -237,7 +237,7 @@ export const en = {
     'tierblock.planner.name': 'Archive Planner',
     'tierblock.planner.description': 'Asks a utility model which past scenes to recall before the main turn runs. Off by default: on the Turn Prep memory probes its picks never changed which scenes reached the writer, and it reads ~21k tokens a turn.',
     'tierblock.expandQuery.name': 'Query Expansion',
-    'tierblock.expandQuery.description': 'Expands short user messages into richer retrieval queries for semantic archive search.',
+    'tierblock.expandQuery.description': "Rewrites short or \"remember when…\" messages into extra memory searches, using the last exchange. Off by default: on short versions of the Turn Prep memory probes it found fewer of the right scenes on its own (3.5 vs 7 of the targets in the top 6); with the Semantic Reranker also on it scored best (9).",
     'tierblock.reranker.name': 'Semantic Reranker',
     'tierblock.reranker.description': 'Re-ranks archive search results with a utility model after the first-pass retrieval.',
     'tierblock.archiveFunnel.name': 'Chapter Recall Funnel',

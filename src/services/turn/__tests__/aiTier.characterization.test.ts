@@ -75,7 +75,7 @@ const EXPECTED: Record<AiTier, Record<TierFeature, boolean>> = {
         lodSlottedRag: false,
     },
     max: {
-        introEngine: true, planner: false, expandQuery: true, reranker: true, archiveFunnel: false,
+        introEngine: true, planner: false, expandQuery: false, reranker: true, archiveFunnel: false,
         deepScan: true, recommender: true, recommenderThinking: false, npcStance: true,
         importanceRating: true, witnessAux: true, npcValidate: true, npcProfileGen: true,
         npcUpdate: true, drivesBackfill: true, profileScan: true, inventoryScan: true, locationScan: true, locationEnrich: true, sealChapter: true,

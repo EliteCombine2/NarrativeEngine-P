@@ -101,6 +101,8 @@ export interface FacadeData {
 
 export interface FacadeConfig {
     readonly aiTier: AiTier | undefined;
+    /** Block View switches (`settings.moduleEnabled`); an explicit entry beats the tier preset. */
+    readonly moduleEnabled: Readonly<Record<string, boolean>> | undefined;
     readonly contextLimit: number;
     readonly archiveRecallDepth: 'lean' | 'standard' | 'deep';
     readonly autoArchiveStaleNPCsTurns: number;
@@ -199,6 +201,7 @@ export interface HostFacadeBuildOptions {
 
 type FacadeSettings = {
     aiTier?: AiTier;
+    moduleEnabled?: Record<string, boolean>;
     contextLimit: number;
     archiveRecallDepth?: 'lean' | 'standard' | 'deep';
     autoArchiveStaleNPCsTurns?: number;
@@ -249,6 +252,7 @@ function cloneAndFreeze<T>(value: T, seen = new WeakMap<object, unknown>()): T {
 function readFacadeSettings(settings: FacadeSettings): FacadeConfig {
     return Object.freeze({
         aiTier: settings.aiTier,
+        moduleEnabled: settings.moduleEnabled ? Object.freeze({ ...settings.moduleEnabled }) : undefined,
         contextLimit: settings.contextLimit,
         archiveRecallDepth: settings.archiveRecallDepth ?? 'standard',
         autoArchiveStaleNPCsTurns: settings.autoArchiveStaleNPCsTurns ?? 0,
