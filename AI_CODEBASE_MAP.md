@@ -448,9 +448,53 @@ The main game loop flows through `runTurn()` in `turnOrchestrator.ts` (234 lines
 `tierBlockRegistry.ts` (116 lines) — registry for mod-declared tier entries (per-tier matrix + cooldown + modId provenance).
 `absoluteCommand.ts` (39 lines) — Absolute Command v1: binding `[USER ABSOLUTE COMMAND — OUT OF CHARACTER, BINDING]` block placed LAST, suppressing Director Brief/watchdog/GM_REMINDER for that turn.
 
+### 9.2a NPC systems — which one is current (read before touching NPC code)
+
+Three NPC motivation/personality layers exist in the code. Only one is current. **The design docs live in the mobile
+repo, not here** — desktop received the code through "port from mobile" commits (1e26e6b 2026-06-19, cb42caf
+2026-06-27) without the plans, and some desktop comments name mobile functions that were never ported.
+
+| Layer | Since | Status | What it is |
+|---|---|---|---|
+| **Agency** (`personalityHex`, `wants`, `goalRecords`, `traits`, `skillRung`, `populated`) | 2026-06-19 | **CURRENT** | 6-axis personality hexagon (stored as numbers, shown to the writer only as band-words), tiered wants (≤4 short / ≤3 medium / 1 long), goal records the off-screen heartbeat rolls against, controlled-vocab traits. The engine can act on it. |
+| **Drives** (`drives.coreWant/sessionWant/sceneWant`) | 2026-05-05 | **LEGACY** | Three fixed sentences for the writer. Superseded by `wants` (design §9.4: "seed from it, don't blank"). |
+| **Relationship memory** (NPC Ledger v3) | 2026-08-13 | Layer on top, per-campaign flag, default off | Relationships as accumulated history, not scalars. Plans: `Upgrade/_archive/NPC-Ledger-v3/`. |
+
+**Where the plans are:**
+- `mobileApp/Upgrade/OpusPlans/dynamic_world__npc_agency__arc_direction__DESIGN.md` (§0 why; §9.4 supersession table)
+- `mobileApp/Upgrade/OpusPlans/NPC_Agency_Phase1..4/`
+- `mobileApp/Upgrade/OpusPlans/NPC_Generation_Refit/00_SPEC.md` (propose → roll → render)
+
+**Who fills the agency fields on desktop:**
+- **New NPCs:** `npc-generation/profile.ts`, born `populated`. The model proposes groups and anchor traits, the engine
+  rolls the hex, the model renders flavour. Drives are **not** generated (removed 2026-10-04).
+- **Imported ST cards:** `import/populateImportedNPC.ts` (mechanical, no LLM).
+- **Lore-authored NPCs:** `lore/loreNPCParser.ts`. It still maps authored CoreWant/SessionWant/SceneWant to `drives`;
+  the lazy fill carries them into `wants` on first appearance.
+- **Older NPCs (pre-agency saves):** `npc/agency/agencyLazyFill.ts`, from `tracks/npcTrack.ts`, the first time the GM
+  names them, when `heartbeatTick` is on. Mechanical, no LLM: keyword hex, pool wants, long want from drives/goals.
+  - This is desktop's stand-in for mobile's `populateAgencyFields` (LLM-based, **never ported**).
+  - Until 2026-10-04 nothing filled them, so the ~170 NPCs in the Spirit Card World saves never ticked.
+- **Ongoing:** the NPC updater (`npc-generation/update.ts`) refines wants/hex/traits from play. Its rule: "wants, NOT
+  drives"; it strips any `drives` the model sends.
+
+**Kept alongside agency, not replaced:** `hardBoundaries` / `softBoundaries` / `behavioralTriggers` (`WON'T` /
+`RESENTS` / `ON "x"` in the NPC directive). Design §9.4: boundaries are free-text specifics, traits are engine switches,
+"no lossy collapse". They are written at generation and by the NPC updater.
+
+**Legacy code still present, on purpose:**
+- `npc-generation/backfill.ts` (`backfillNPCDrives`): its call in `npcTrack.ts` is commented out with the reason. The
+  `drivesBackfill` block is marked unwired and off in every preset, so stored settings stay valid.
+- Drives display as a fallback when an NPC has no `wants` (`payload/world.ts`, `npc/npcBehaviorDirective.ts`).
+
+**Traps:**
+- `populated` gates off-screen agency (`agencyHeartbeat.ts`): an unpopulated NPC never ticks.
+- Comments mentioning `populateAgencyFields` describe the mobile app.
+- Do not reintroduce drives generation or backfill: it gives NPCs two competing motivation sets.
+
 ### 9.2 NPC Agency (`src/services/npc/agency/`)
 
-**17 production files (+10 test files).**
+**18 production files (+11 test files)**, including `agencyLazyFill.ts` (see 9.2a).
 
 The agency tick is a heartbeat-driven NPC off-screen life simulator. Every tick:
 1. **Timeskip detection** (`detectTimeskip`, 13 regex patterns): if non-ambiguous weeks>0 and tier allows `timeskipRun`, run `runTimeskipPath` (batched engine state + 1 narration LLM call) and return.
